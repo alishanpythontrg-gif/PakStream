@@ -53,6 +53,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.login(credentials);
       setUser(response.data.user);
       setToken(response.data.token);
+      
+      return response;
     } catch (error: any) {
       setError(error.message || 'Login failed');
       throw error;
@@ -69,6 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.register(credentials);
       setUser(response.data.user);
       setToken(response.data.token);
+      
+      return response;
     } catch (error: any) {
       setError(error.message || 'Registration failed');
       throw error;
@@ -85,6 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.registerAdmin(credentials);
       setUser(response.data.user);
       setToken(response.data.token);
+      
+      return response;
     } catch (error: any) {
       setError(error.message || 'Admin registration failed');
       throw error;
@@ -100,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
-  const updateProfile = async (profileData: Partial<User['profile']>) => {
+  const updateProfile = async (profileData: Partial<User>) => {
     try {
       setLoading(true);
       setError(null);
@@ -118,13 +124,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     token,
+    loading,
+    error,
     login,
     register,
     registerAdmin,
     logout,
-    updateProfile,
-    loading,
-    error
+    updateProfile
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

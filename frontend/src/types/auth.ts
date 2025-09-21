@@ -38,18 +38,21 @@ export interface RegisterCredentials {
   password: string;
 }
 
-export interface AdminRegisterCredentials extends RegisterCredentials {
+export interface AdminRegisterCredentials {
+  username: string;
+  email: string;
+  password: string;
   adminKey: string;
 }
 
 export interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
-  registerAdmin: (credentials: AdminRegisterCredentials) => Promise<void>;
-  logout: () => void;
-  updateProfile: (data: Partial<User['profile']>) => Promise<void>;
   loading: boolean;
   error: string | null;
+  login: (credentials: LoginCredentials) => Promise<AuthResponse>;
+  register: (credentials: RegisterCredentials) => Promise<AuthResponse>;
+  registerAdmin: (credentials: AdminRegisterCredentials) => Promise<AuthResponse>;
+  logout: () => void;
+  updateProfile: (profileData: Partial<User>) => Promise<void>;
 }

@@ -35,42 +35,20 @@ const Navbar: React.FC = () => {
                 🎬 PakStream
               </div>
               
-              {/* Navigation Links */}
+              {/* Navigation Links - Only Videos and Premieres */}
               <div className="hidden md:flex items-center space-x-6">
                 <button
-                  onClick={() => scrollToSection('featured')}
+                  onClick={() => scrollToSection('videos')}
                   className="text-white hover:text-gray-300 transition-colors"
                 >
-                  Featured
+                  Videos
                 </button>
                 <button
-                  onClick={() => scrollToSection('trending')}
+                  onClick={() => scrollToSection('premieres')}
                   className="text-white hover:text-gray-300 transition-colors"
                 >
-                  Trending
+                  Premieres
                 </button>
-                <button
-                  onClick={() => scrollToSection('new-releases')}
-                  className="text-white hover:text-gray-300 transition-colors"
-                >
-                  New Releases
-                </button>
-                {user?.role === 'admin' && (
-                  <button
-                    onClick={() => scrollToSection('admin-videos')}
-                    className="text-white hover:text-gray-300 transition-colors"
-                  >
-                    Admin Videos
-                  </button>
-                )}
-                {user?.role === 'admin' && (
-                  <button
-                    onClick={() => scrollToSection('admin-premieres')}
-                    className="text-white hover:text-gray-300 transition-colors"
-                  >
-                    Premieres
-                  </button>
-                )}
               </div>
             </div>
 

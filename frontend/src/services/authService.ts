@@ -9,17 +9,17 @@ import {
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 class AuthService {
-  private token: string | null = localStorage.getItem('token');
-
   private async request<T>(
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+    const token = this.getToken();
+    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
@@ -70,40 +70,32 @@ class AuthService {
     return response;
   }
 
-  async getProfile(): Promise<{ success: boolean; data: { user: User } }> {
-    return this.request<{ success: boolean; data: { user: User } }>('/auth/profile');
+  async getProfile(): Promise<{ data: { user: User } }> {
+    return this.request<{ data: { user: User } }>('/auth/profile');
   }
 
-  async updateProfile(profileData: Partial<User['profile']>): Promise<{ success: boolean; data: { user: User } }> {
-    return this.request<{ success: boolean; data: { user: User } }>('/auth/profile', {
+  async updateProfile(updates: Partial<User>): Promise<{ data: { user: User } }> {
+    return this.request<{ data: { user: User } }>('/auth/profile', {
       method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
-  }
-
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>('/auth/change-password', {
-      method: 'PUT',
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify(updates),
     });
   }
 
   setToken(token: string): void {
-    this.token = token;
     localStorage.setItem('token', token);
   }
 
   getToken(): string | null {
-    return this.token;
+    return localStorage.getItem('token');
   }
 
   removeToken(): void {
-    this.token = null;
     localStorage.removeItem('token');
   }
 
   isAuthenticated(): boolean {
-    return !!this.token;
+    const token = this.getToken();
+    return !!token;
   }
 }
 

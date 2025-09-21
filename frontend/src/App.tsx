@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './hooks';
+import { AuthProvider, useAuth } from './hooks';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import VideoGrid from './components/video/VideoGrid';
@@ -14,7 +14,8 @@ import { Video } from './types/video';
 import { Premiere } from './types/premiere';
 import './index.css';
 
-function App() {
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -23,11 +24,12 @@ function App() {
   const [showPremiere, setShowPremiere] = useState(false);
 
   useEffect(() => {
+    console.log('App mounted, checking for active premiere...');
     fetchVideos();
     checkActivePremiere();
     
-    // Check for active premiere every 30 seconds
-    const interval = setInterval(checkActivePremiere, 30000);
+    // Check for active premiere every 10 seconds
+    const interval = setInterval(checkActivePremiere, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -45,11 +47,16 @@ function App() {
 
   const checkActivePremiere = async () => {
     try {
+      console.log('Checking for active premiere...');
       const response = await premiereService.getActivePremiere();
+      console.log('Active premiere response:', response);
+      
       if (response.data.premiere) {
+        console.log('Found active premiere:', response.data.premiere);
         setActivePremiere(response.data.premiere);
         setShowPremiere(true);
       } else {
+        console.log('No active premiere found');
         setActivePremiere(null);
         setShowPremiere(false);
       }
@@ -59,163 +66,110 @@ function App() {
   };
 
   const handleVideoClick = (video: Video) => {
-    // Don't show video player if there's an active premiere
-    if (activePremiere) {
-      return;
-    }
-    
     setSelectedVideo(video);
     setShowVideoPlayer(true);
   };
 
-  const handleCloseVideo = () => {
-    setSelectedVideo(null);
+  const handleCloseVideoPlayer = () => {
     setShowVideoPlayer(false);
+    setSelectedVideo(null);
   };
 
   const handleClosePremiere = () => {
     setShowPremiere(false);
+    setActivePremiere(null);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <AuthProvider>
-      <div className="min-h-screen bg-netflix-black">
-        <Navbar />
-        <main className="pt-16">
-          <HeroSection />
-          
-          {/* Featured Videos Section */}
-          <section className="py-16 px-4 bg-netflix-black">
-            <div className="container mx-auto">
-              <h2 className="text-3xl font-bold mb-8 text-white">Featured Videos</h2>
-              <VideoGrid
-                videos={videos}
-                loading={loading}
-                onVideoClick={handleVideoClick}
+    <div className="min-h-screen bg-black">
+      <Navbar />
+      
+      <main>
+        {/* Live Premiere */}
+        {showPremiere && activePremiere && (
+          <div className="mb-8">
+            {premiereService.isPremiereLive(activePremiere) ? (
+              <LivePremiere 
+                premiere={activePremiere} 
+                onClose={handleClosePremiere}
               />
+            ) : premiereService.isPremiereScheduled(activePremiere) ? (
+              <ScheduledPremiere 
+                premiere={activePremiere} 
+                onClose={handleClosePremiere}
+              />
+            ) : null}
+          </div>
+        )}
+
+        {/* Hero Section */}
+        <HeroSection />
+
+        {/* Videos Section */}
+        <section id="videos" className="py-16">
+          <div className="container mx-auto px-6">
+            <h2 className="text-3xl font-bold text-white mb-8">Videos</h2>
+            <VideoGrid 
+              videos={videos} 
+              onVideoClick={handleVideoClick}
+            />
+          </div>
+        </section>
+
+        {/* Premieres Section */}
+        <section id="premieres" className="py-16">
+          <div className="container mx-auto px-6">
+            <h2 className="text-3xl font-bold text-white mb-8">Premieres</h2>
+            <div className="text-center text-gray-400">
+              <p className="text-lg mb-4">Live and upcoming premieres will appear here</p>
+              <p className="text-sm">Check back for exciting new content!</p>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Admin Video Dashboard - Only visible to admins */}
-          <AdminVideoDashboard />
-          
-          {/* Admin Premiere Dashboard - Only visible to admins */}
-          <AdminPremiereDashboard />
-        </main>
-
-        {/* Live Premiere Overlay */}
-        {showPremiere && activePremiere && premiereService.isPremiereLive(activePremiere) && (
-          <LivePremiere
-            premiere={activePremiere}
-            onClose={handleClosePremiere}
-          />
+        {/* Video Player Modal - Full Screen */}
+        {showVideoPlayer && selectedVideo && (
+          <div className="fixed inset-0 bg-black z-50 video-player-fullscreen">
+            <VideoPlayer
+              video={selectedVideo}
+              onClose={handleCloseVideoPlayer}
+              autoPlay={true}
+              controls={true}
+              className="w-full h-full"
+            />
+          </div>
         )}
 
-        {/* Scheduled Premiere Overlay */}
-        {showPremiere && activePremiere && premiereService.isPremiereScheduled(activePremiere) && (
-          <ScheduledPremiere
-            premiere={activePremiere}
-            onClose={handleClosePremiere}
-          />
-        )}
-
-        {/* Inline Video Player */}
-        {showVideoPlayer && selectedVideo && !activePremiere && (
-          <div className="fixed inset-0 bg-black bg-opacity-95 z-50">
-            <div className="h-full flex flex-col">
-              {/* Header */}
-              <div className="flex justify-between items-center p-4 bg-netflix-black border-b border-gray-600">
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
-                  <p className="text-gray-400 text-sm">{selectedVideo.category} • {selectedVideo.views} views</p>
-                </div>
-                <button
-                  onClick={handleCloseVideo}
-                  className="text-gray-400 hover:text-white text-2xl p-2"
-                >
-                  ×
-                </button>
-              </div>
-
-              {/* Video Player */}
-              <div className="flex-1 flex">
-                <div className="flex-1">
-                  <VideoPlayer
-                    video={selectedVideo}
-                    autoPlay={true}
-                    controls={true}
-                    className="h-full"
-                    onClose={handleCloseVideo}
-                  />
-                </div>
-
-                {/* Video Info Sidebar */}
-                <div className="w-80 bg-netflix-gray p-6 overflow-y-auto">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Description</h3>
-                      <p className="text-gray-300 text-sm">{selectedVideo.description}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Details</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Duration:</span>
-                          <span className="text-white">{Math.floor(selectedVideo.duration / 60)}:{(selectedVideo.duration % 60).toString().padStart(2, '0')}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Resolution:</span>
-                          <span className="text-white">{selectedVideo.resolution}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Category:</span>
-                          <span className="text-white capitalize">{selectedVideo.category}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Uploaded by:</span>
-                          <span className="text-white">{selectedVideo.uploadedBy.username}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Upload date:</span>
-                          <span className="text-white">{new Date(selectedVideo.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedVideo.tags && selectedVideo.tags.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Tags</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedVideo.tags.map((tag, index) => (
-                            <span key={index} className="px-2 py-1 bg-gray-700 text-white text-xs rounded">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Actions</h3>
-                      <div className="space-y-2">
-                        <button className="w-full btn-primary text-sm">
-                          Add to My List
-                        </button>
-                        <button className="w-full btn-secondary text-sm">
-                          Share
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        {/* Admin Dashboard */}
+        {user?.role === 'admin' && (
+          <div className="container mx-auto px-6 py-8">
+            <div id="admin-videos">
+              <AdminVideoDashboard />
+            </div>
+            <div id="admin-premieres" className="mt-16">
+              <AdminPremiereDashboard />
             </div>
           </div>
         )}
-      </div>
+      </main>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
-}
+};
 
 export default App;

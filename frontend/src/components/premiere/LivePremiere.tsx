@@ -1,43 +1,105 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Premiere } from '../../types/premiere';
 import { Video, VideoVariant } from '../../types/video';
-import premiereService from '../../services/premiereService';
-import VideoPlayer from '../video/VideoPlayer';
+import VideoPlayer, { VideoPlayerRef } from '../video/VideoPlayer';
+import socketService from '../../services/socketService';
 
 interface LivePremiereProps {
   premiere: Premiere;
   onClose?: () => void;
 }
 
+interface ChatMessage {
+  id: number;
+  user: string;
+  message: string;
+  timestamp: Date;
+}
+
 const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [viewerCount, setViewerCount] = useState(premiere.totalViewers);
-  const [isJoined, setIsJoined] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const videoRef = useRef<VideoPlayerRef>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Join the premiere
-    const joinPremiere = async () => {
-      try {
-        await premiereService.joinPremiere();
-        setIsJoined(true);
-      } catch (error) {
-        console.error('Failed to join premiere:', error);
-      }
-    };
+    // Join the premiere room
+    socketService.joinPremiere(premiere._id);
 
-    joinPremiere();
+    // Set up socket event listeners
+    socketService.onPremiereJoined((data) => {
+      console.log('Premiere joined:', data);
+      setViewerCount(data.viewerCount);
+      setChatMessages(data.chat || []);
+    });
+
+    socketService.onViewerJoined((data) => {
+      setViewerCount(data.viewerCount);
+    });
+
+    socketService.onViewerLeft((data) => {
+      setViewerCount(data.viewerCount);
+    });
+
+    socketService.onPremiereStarted((data) => {
+      console.log('Premiere started:', data);
+    });
+
+    socketService.onPremiereEnded((data) => {
+      console.log('Premiere ended:', data);
+      if (onClose) onClose();
+    });
+
+    socketService.onVideoPlay(() => {
+      if (videoRef.current) {
+        videoRef.current.play();
+      }
+    });
+
+    socketService.onVideoPause(() => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    });
+
+    socketService.onVideoSeek((data) => {
+      if (videoRef.current) {
+        videoRef.current.seek(data.time);
+      }
+    });
+
+    socketService.onNewMessage((message) => {
+      setChatMessages(prev => [...prev, message]);
+      scrollToBottom();
+    });
+
+    socketService.onError((error) => {
+      console.error('Socket error:', error);
+    });
 
     // Update time remaining
     const updateTimeRemaining = () => {
-      const remaining = premiereService.getTimeUntilEnd(premiere.endTime);
+      const remaining = socketService.getTimeUntilEnd(premiere.endTime);
       setTimeRemaining(remaining);
     };
 
     updateTimeRemaining();
     const interval = setInterval(updateTimeRemaining, 1000);
 
-    return () => clearInterval(interval);
-  }, [premiere]);
+    return () => {
+      clearInterval(interval);
+      socketService.leavePremiere(premiere._id);
+      socketService.removeAllListeners();
+    };
+  }, [premiere, onClose]);
+
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  };
 
   const formatTimeRemaining = (milliseconds: number) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -52,6 +114,26 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     }
   };
 
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim()) {
+      socketService.sendMessage(premiere._id, newMessage.trim());
+      setNewMessage('');
+    }
+  };
+
+  const handleVideoPlay = () => {
+    socketService.playVideo(premiere._id);
+  };
+
+  const handleVideoPause = () => {
+    socketService.pauseVideo(premiere._id);
+  };
+
+  const handleVideoSeek = (time: number) => {
+    socketService.seekVideo(premiere._id, time);
+  };
+
   // Convert premiere video to Video type for VideoPlayer
   const videoForPlayer: Video = {
     _id: premiere.video._id,
@@ -59,11 +141,11 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     description: premiere.video.description,
     duration: premiere.video.duration,
     resolution: premiere.video.resolution,
-    fileSize: 0, // Default value since it's not available in premiere video
+    fileSize: 0,
     uploadedBy: {
       _id: premiere.createdBy._id,
       username: premiere.createdBy.username,
-      email: 'premiere@pakstream.com' // Default email for premiere videos
+      email: 'premiere@pakstream.com'
     },
     originalFile: {
       filename: '',
@@ -78,7 +160,7 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     likes: 0,
     dislikes: 0,
     tags: [],
-    category: 'movie', // Use valid category instead of 'premiere'
+    category: 'movie',
     isPublic: true,
     isFeatured: false,
     createdAt: premiere.createdAt,
@@ -86,7 +168,7 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     processedFiles: {
       hls: {
         masterPlaylist: premiere.video.processedFiles.hls.masterPlaylist,
-        segments: [], // Empty array since segments are not available at top level
+        segments: [],
         variants: premiere.video.processedFiles.hls.variants.map(v => ({
           resolution: v.resolution,
           bitrate: v.bitrate,
@@ -100,10 +182,11 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50">
-      {/* Premiere Header */}
-      <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black to-transparent p-6 z-10">
-        <div className="container mx-auto">
+    <div className="fixed inset-0 bg-black z-50 flex">
+      {/* Main Video Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Premiere Header */}
+        <div className="bg-gradient-to-b from-black to-transparent p-6 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -143,21 +226,23 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Video Player */}
-      <div className="h-full pt-20">
-        <VideoPlayer
-          video={videoForPlayer}
-          autoPlay={true}
-          controls={true}
-          className="h-full"
-        />
-      </div>
+        {/* Video Player */}
+        <div className="flex-1 pt-4">
+          <VideoPlayer
+            video={videoForPlayer}
+            autoPlay={true}
+            controls={true}
+            className="h-full"
+            onPlay={handleVideoPlay}
+            onPause={handleVideoPause}
+            onSeek={handleVideoSeek}
+            ref={videoRef}
+          />
+        </div>
 
-      {/* Premiere Info Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
-        <div className="container mx-auto">
+        {/* Premiere Info Overlay */}
+        <div className="bg-gradient-to-t from-black to-transparent p-6">
           <div className="flex items-center justify-between">
             <div className="text-white">
               <p className="text-sm text-gray-300">
@@ -182,6 +267,47 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Chat Sidebar */}
+      <div className="w-80 bg-gray-900 flex flex-col">
+        <div className="p-4 border-b border-gray-700">
+          <h3 className="text-white font-semibold">Live Chat</h3>
+          <p className="text-gray-400 text-sm">{viewerCount} viewers</p>
+        </div>
+        
+        <div 
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-2"
+        >
+          {chatMessages.map((message) => (
+            <div key={message.id} className="text-sm">
+              <span className="text-blue-400 font-medium">{message.user}:</span>
+              <span className="text-white ml-2">{message.message}</span>
+              <div className="text-gray-500 text-xs">
+                {new Date(message.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700">
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Send
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

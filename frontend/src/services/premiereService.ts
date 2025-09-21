@@ -1,5 +1,4 @@
 import { Premiere, PremiereResponse, PremieresResponse, CreatePremiereData } from '../types/premiere';
-import videoService from './videoService';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -11,8 +10,11 @@ class PremiereService {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = localStorage.getItem('token');
     
+    console.log('PremiereService request:', { url, token: token ? 'Present' : 'Missing' });
+    
     const config: RequestInit = {
       headers: {
+        'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
@@ -24,65 +26,74 @@ class PremiereService {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('PremiereService error:', { status: response.status, data });
         throw new Error(data.message || 'Request failed');
       }
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('PremiereService API request failed:', error);
+      throw error;
+    }
+  }
+
+  // Public method for getting active premiere (no auth required)
+  private async publicRequest<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    console.log('PremiereService public request:', { url });
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('PremiereService public error:', { status: response.status, data });
+        throw new Error(data.message || 'Request failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('PremiereService public API request failed:', error);
       throw error;
     }
   }
 
   async createPremiere(premiereData: CreatePremiereData): Promise<PremiereResponse> {
+    console.log('Creating premiere with data:', premiereData);
     return this.request<PremiereResponse>('/premieres', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(premiereData),
     });
   }
 
+  async getAllPremieres(): Promise<PremieresResponse> {
+    return this.request<PremieresResponse>('/premieres');
+  }
+
+  // Public method - no authentication required
   async getActivePremiere(): Promise<PremiereResponse> {
-    return this.request<PremiereResponse>('/premieres/active');
+    return this.publicRequest<PremiereResponse>('/premieres/active');
   }
 
-  async getAllPremieres(params: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  } = {}): Promise<PremieresResponse> {
-    const queryParams = new URLSearchParams();
-    
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.status) queryParams.append('status', params.status);
-
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `/premieres?${queryString}` : '/premieres';
-
-    return this.request<PremieresResponse>(endpoint);
-  }
-
-  async joinPremiere(): Promise<PremiereResponse> {
-    return this.request<PremiereResponse>('/premieres/join', {
-      method: 'POST',
-    });
-  }
-
-  async endPremiere(premiereId: string): Promise<PremiereResponse> {
-    return this.request<PremiereResponse>(`/premieres/${premiereId}/end`, {
-      method: 'POST',
-    });
+  async getPremiereById(premiereId: string): Promise<PremiereResponse> {
+    return this.request<PremiereResponse>(`/premieres/${premiereId}`);
   }
 
   async updatePremiere(premiereId: string, updateData: Partial<CreatePremiereData>): Promise<PremiereResponse> {
     return this.request<PremiereResponse>(`/premieres/${premiereId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(updateData),
     });
   }
@@ -93,7 +104,33 @@ class PremiereService {
     });
   }
 
-  // Helper methods
+  async joinPremiere(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/premieres/join', {
+      method: 'POST',
+    });
+  }
+
+  async endPremiere(premiereId: string): Promise<PremiereResponse> {
+    return this.request<PremiereResponse>(`/premieres/${premiereId}/end`, {
+      method: 'POST',
+    });
+  }
+
+  isPremiereLive(premiere: Premiere): boolean {
+    const now = new Date();
+    const startTime = new Date(premiere.startTime);
+    const endTime = new Date(premiere.endTime);
+    
+    return now >= startTime && now <= endTime && premiere.status === 'live';
+  }
+
+  isPremiereScheduled(premiere: Premiere): boolean {
+    const now = new Date();
+    const startTime = new Date(premiere.startTime);
+    
+    return now < startTime && premiere.status === 'scheduled';
+  }
+
   getTimeUntilStart(startTime: string): number {
     const now = new Date().getTime();
     const start = new Date(startTime).getTime();
@@ -106,35 +143,12 @@ class PremiereService {
     return Math.max(0, end - now);
   }
 
-  isPremiereLive(premiere: Premiere): boolean {
-    const now = new Date();
-    const start = new Date(premiere.startTime);
-    const end = new Date(premiere.endTime);
-    return now >= start && now <= end && premiere.status === 'live';
-  }
-
-  isPremiereScheduled(premiere: Premiere): boolean {
-    const now = new Date();
-    const start = new Date(premiere.startTime);
-    return now < start && premiere.status === 'scheduled';
-  }
-
-  formatTimeRemaining(milliseconds: number): string {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    } else {
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-  }
-
-  // Delegate to videoService for video-related methods
+  // Utility method to get poster URL
   getPosterUrl(video: any): string {
-    return videoService.getPosterUrl(video);
+    if (!video.processedFiles?.poster) {
+      return '';
+    }
+    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.poster}`;
   }
 }
 

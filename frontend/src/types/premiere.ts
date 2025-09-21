@@ -29,10 +29,7 @@ export interface Premiere {
     _id: string;
     username: string;
   };
-  viewers: Array<{
-    user: string;
-    joinedAt: string;
-  }>;
+  viewers: string[];
   totalViewers: number;
   isActive: boolean;
   createdAt: string;
@@ -49,13 +46,9 @@ export interface PremiereResponse {
 
 export interface PremieresResponse {
   success: boolean;
+  message: string;
   data: {
     premieres: Premiere[];
-    pagination: {
-      current: number;
-      pages: number;
-      total: number;
-    };
   };
 }
 
@@ -63,6 +56,5 @@ export interface CreatePremiereData {
   videoId: string;
   title: string;
   description: string;
-  startTime?: string;
-  duration?: number;
+  startTime: string;
 }
