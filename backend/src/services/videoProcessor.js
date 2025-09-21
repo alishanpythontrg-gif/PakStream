@@ -16,7 +16,7 @@ class VideoProcessor {
     ];
   }
 
-  async processVideo(videoId, inputPath, outputDir) {
+  async processVideo(videoId, inputPath, outputDir, io = null) {
     try {
       console.log(`Starting video processing for ${videoId}`);
       
@@ -26,17 +26,29 @@ class VideoProcessor {
 
       // Get video metadata
       const metadata = await this.getVideoMetadata(inputPath);
+      console.log(`Video metadata:`, metadata);
       
-      // Generate thumbnails
-      const thumbnails = await this.generateThumbnails(inputPath, hlsDir, videoId);
+      // Emit progress update
+      this.emitProgress(io, videoId, 10, 'Getting video metadata...');
+
+      // Generate thumbnails (in parallel with HLS)
+      const thumbnailPromise = this.generateThumbnails(inputPath, hlsDir, videoId, io);
       
       // Generate HLS variants for different qualities
-      const variants = await this.generateHLSVariants(inputPath, hlsDir, videoId, metadata);
+      const variants = await this.generateHLSVariants(inputPath, hlsDir, videoId, metadata, io);
       
-      // Generate master playlist
-      const masterPlaylist = await this.generateMasterPlaylist(variants, hlsDir, videoId);
+      // Wait for thumbnails to complete
+      const thumbnails = await thumbnailPromise;
+      
+      // Only generate master playlist if we have variants
+      let masterPlaylist = null;
+      if (variants.length > 0) {
+        masterPlaylist = await this.generateMasterPlaylist(variants, hlsDir, videoId);
+        this.emitProgress(io, videoId, 95, 'Generating master playlist...');
+      }
       
       console.log(`Video processing completed for ${videoId}`);
+      this.emitProgress(io, videoId, 100, 'Processing completed!');
       
       return {
         duration: metadata.duration,
@@ -49,12 +61,24 @@ class VideoProcessor {
             segments: this.getAllSegments(variants)
           },
           thumbnails,
-          poster: thumbnails[0] // Use first thumbnail as poster
+          poster: thumbnails[0] || null
         }
       };
     } catch (error) {
       console.error('Video processing error:', error);
+      this.emitProgress(io, videoId, -1, `Processing failed: ${error.message}`);
       throw error;
+    }
+  }
+
+  emitProgress(io, videoId, progress, message) {
+    if (io) {
+      io.emit('videoProcessingProgress', {
+        videoId,
+        progress: Math.max(0, Math.min(100, progress)),
+        message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 
@@ -67,70 +91,128 @@ class VideoProcessor {
         }
         
         const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
-        const duration = metadata.format.duration;
-        const fileSize = metadata.format.size;
+        if (!videoStream) {
+          reject(new Error('No video stream found'));
+          return;
+        }
         
         resolve({
-          duration: Math.round(duration),
-          resolution: `${videoStream.width}x${videoStream.height}`,
-          fileSize: parseInt(fileSize),
+          duration: parseFloat(metadata.format.duration),
           width: videoStream.width,
-          height: videoStream.height
+          height: videoStream.height,
+          resolution: `${videoStream.width}x${videoStream.height}`,
+          fileSize: parseInt(metadata.format.size)
         });
       });
     });
   }
 
-  async generateThumbnails(inputPath, outputDir, videoId) {
+  async generateThumbnails(inputPath, outputDir, videoId, io) {
     const thumbnails = [];
-    const thumbnailCount = 5;
+    const duration = await this.getVideoDuration(inputPath);
     
+    // Generate 5 thumbnails evenly distributed
+    for (let i = 1; i <= 5; i++) {
+      const time = (duration / 6) * i;
+      const thumbnailPath = path.join(outputDir, `${videoId}_thumb_${i}.jpg`);
+      
+      try {
+        await new Promise((resolve, reject) => {
+          ffmpeg(inputPath)
+            .seekInput(time)
+            .frames(1)
+            .size('320x180')
+            .output(thumbnailPath)
+            .on('end', () => {
+              thumbnails.push(`${videoId}_thumb_${i}.jpg`);
+              this.emitProgress(io, videoId, 15 + (i * 2), `Generating thumbnail ${i}/5...`);
+              resolve();
+            })
+            .on('error', reject)
+            .run();
+        });
+      } catch (error) {
+        console.error(`Failed to generate thumbnail ${i}:`, error);
+        // Continue with other thumbnails
+      }
+    }
+    
+    return thumbnails;
+  }
+
+  async getVideoDuration(inputPath) {
     return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .screenshots({
-          count: thumbnailCount,
-          folder: outputDir,
-          filename: `${videoId}_thumb_%i.jpg`,
-          size: '320x180'
-        })
-        .on('end', () => {
-          for (let i = 1; i <= thumbnailCount; i++) {
-            thumbnails.push(`${videoId}_thumb_${i}.jpg`);
-          }
-          resolve(thumbnails);
-        })
-        .on('error', reject);
+      ffmpeg.ffprobe(inputPath, (err, metadata) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(parseFloat(metadata.format.duration));
+      });
     });
   }
 
-  async generateHLSVariants(inputPath, outputDir, videoId, metadata) {
+  async generateHLSVariants(inputPath, outputDir, videoId, metadata, io) {
     const variants = [];
+    const totalQualities = this.qualities.filter(q => 
+      metadata.width >= q.width && metadata.height >= q.height
+    ).length;
     
-    for (const quality of this.qualities) {
-      // Skip if video resolution is smaller than target resolution
-      if (metadata.width < quality.width || metadata.height < quality.height) {
-        continue;
-      }
-      
+    if (totalQualities === 0) {
+      // If video is too small for any quality, create a single variant at original resolution
       const variant = await this.generateHLSVariant(
         inputPath, 
         outputDir, 
         videoId, 
-        quality, 
-        metadata
+        { resolution: 'original', width: metadata.width, height: metadata.height, bitrate: '500k' },
+        metadata,
+        io,
+        0,
+        1
       );
       variants.push(variant);
+      return variants;
+    }
+
+    let completed = 0;
+    for (const quality of this.qualities) {
+      // Skip if video resolution is smaller than target resolution
+      if (metadata.width < quality.width || metadata.height < quality.height) {
+        console.log(`Skipping ${quality.resolution} - video too small (${metadata.width}x${metadata.height})`);
+        continue;
+      }
+      
+      try {
+        const variant = await this.generateHLSVariant(
+          inputPath, 
+          outputDir, 
+          videoId, 
+          quality, 
+          metadata,
+          io,
+          completed,
+          totalQualities
+        );
+        variants.push(variant);
+        completed++;
+        console.log(`Generated ${quality.resolution} variant successfully`);
+      } catch (error) {
+        console.error(`Failed to generate ${quality.resolution} variant:`, error);
+        // Continue with other qualities even if one fails
+      }
     }
     
     return variants;
   }
 
-  async generateHLSVariant(inputPath, outputDir, videoId, quality, metadata) {
+  async generateHLSVariant(inputPath, outputDir, videoId, quality, metadata, io, completed, total) {
     const playlistPath = path.join(outputDir, `${videoId}_${quality.resolution}.m3u8`);
     const segmentPattern = path.join(outputDir, `${videoId}_${quality.resolution}_%03d.ts`);
     
     return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
+      console.log(`Generating HLS variant: ${quality.resolution} (${quality.width}x${quality.height})`);
+      
+      const command = ffmpeg(inputPath)
         .videoCodec('libx264')
         .audioCodec('aac')
         .size(`${quality.width}x${quality.height}`)
@@ -141,10 +223,31 @@ class VideoProcessor {
           '-hls_time 10',
           '-hls_list_size 0',
           '-hls_segment_filename', segmentPattern,
-          '-f hls'
+          '-f hls',
+          '-preset ultrafast', // Much faster encoding
+          '-crf 28', // Higher CRF for faster encoding
+          '-maxrate', quality.bitrate,
+          '-bufsize', `${parseInt(quality.bitrate) * 2}k`,
+          '-avoid_negative_ts make_zero',
+          '-fflags +genpts',
+          '-threads 0' // Use all available CPU cores
         ])
         .output(playlistPath)
+        .on('start', (commandLine) => {
+          console.log('FFmpeg command:', commandLine);
+        })
+        .on('progress', (progress) => {
+          if (progress.percent) {
+            const baseProgress = 25 + (completed / total) * 60; // 25-85% range for HLS processing
+            const variantProgress = (progress.percent / 100) * (60 / total);
+            const totalProgress = Math.min(85, baseProgress + variantProgress);
+            
+            this.emitProgress(io, videoId, totalProgress, 
+              `Processing ${quality.resolution} (${progress.percent.toFixed(1)}%)...`);
+          }
+        })
         .on('end', () => {
+          console.log(`HLS variant ${quality.resolution} completed`);
           // Get generated segments
           this.getSegments(outputDir, videoId, quality.resolution)
             .then(segments => {
@@ -157,8 +260,21 @@ class VideoProcessor {
             })
             .catch(reject);
         })
-        .on('error', reject)
-        .run();
+        .on('error', (err) => {
+          console.error(`FFmpeg error for ${quality.resolution}:`, err);
+          reject(err);
+        });
+
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        command.kill('SIGKILL');
+        reject(new Error(`FFmpeg timeout for ${quality.resolution}`));
+      }, 300000); // 5 minutes timeout per variant
+
+      command.on('end', () => clearTimeout(timeout));
+      command.on('error', () => clearTimeout(timeout));
+      
+      command.run();
     });
   }
 
@@ -183,28 +299,21 @@ class VideoProcessor {
   }
 
   async generateMasterPlaylist(variants, outputDir, videoId) {
+    // Ensure directory exists before writing
+    await fs.mkdir(outputDir, { recursive: true });
+    
     const masterPlaylistPath = path.join(outputDir, `${videoId}_master.m3u8`);
     
     let playlistContent = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
     
     variants.forEach(variant => {
-      playlistContent += `#EXT-X-STREAM-INF:BANDWIDTH=${variant.bitrate * 1000},RESOLUTION=${this.getResolutionString(variant.resolution)}\n`;
+      playlistContent += `#EXT-X-STREAM-INF:BANDWIDTH=${variant.bitrate * 1000},RESOLUTION=${variant.resolution}\n`;
       playlistContent += `${variant.playlist}\n`;
     });
     
     await fs.writeFile(masterPlaylistPath, playlistContent);
     return `${videoId}_master.m3u8`;
   }
-
-  getResolutionString(resolution) {
-    const resMap = {
-      '360p': '640x360',
-      '480p': '854x480',
-      '720p': '1280x720',
-      '1080p': '1920x1080'
-    };
-    return resMap[resolution] || '640x360';
-  }
 }
 
-module.exports = new VideoProcessor();
+module.exports = VideoProcessor;

@@ -11,42 +11,40 @@ class PresentationProcessor {
     try {
       console.log(`Processing presentation ${presentationId} from ${originalPath}`);
       
+      // Verify input file exists
+      if (!fs.existsSync(originalPath)) {
+        throw new Error(`Input file not found: ${originalPath}`);
+      }
+
       // Create presentation-specific directory
       const presentationDir = path.join(this.processedDir, presentationId);
       if (!fs.existsSync(presentationDir)) {
         fs.mkdirSync(presentationDir, { recursive: true });
+        console.log(`Created presentation directory: ${presentationDir}`);
       }
 
-      // Convert PowerPoint to images using LibreOffice
-      const imagesDir = path.join(presentationDir, 'slides');
-      if (!fs.existsSync(imagesDir)) {
-        fs.mkdirSync(imagesDir, { recursive: true });
-      }
-
-      const thumbnailsDir = path.join(presentationDir, 'thumbnails');
-      if (!fs.existsSync(thumbnailsDir)) {
-        fs.mkdirSync(thumbnailsDir, { recursive: true });
-      }
-
-      // Convert to PDF first, then to images
-      const pdfPath = path.join(presentationDir, 'presentation.pdf');
+      // Convert PowerPoint to HTML using LibreOffice
+      const htmlPath = path.join(presentationDir, 'presentation.html');
+      console.log(`Converting to HTML: ${originalPath} -> ${htmlPath}`);
       
-      // Convert to PDF using LibreOffice
-      await this.convertToPDF(originalPath, pdfPath);
+      await this.convertToHTML(originalPath, htmlPath);
       
-      // Convert PDF to images using ImageMagick
-      const slides = await this.convertPDFToImages(pdfPath, imagesDir, thumbnailsDir);
-      
-      // Generate presentation thumbnail (first slide)
+      // Generate a simple thumbnail from the first slide
       const thumbnailPath = path.join(presentationDir, 'thumbnail.jpg');
-      if (slides.length > 0) {
-        await this.generateThumbnail(slides[0].imagePath, thumbnailPath);
-      }
+      await this.generateThumbnail(originalPath, thumbnailPath);
+
+      console.log(`Presentation processing completed successfully`);
 
       return {
-        slides,
+        slides: [{
+          slideNumber: 1,
+          imagePath: `presentations/processed/${presentationId}/presentation.html`,
+          thumbnailPath: `presentations/processed/${presentationId}/thumbnail.jpg`,
+          type: 'html'
+        }],
         thumbnail: `presentations/processed/${presentationId}/thumbnail.jpg`,
-        totalSlides: slides.length
+        totalSlides: 1,
+        htmlPath: `presentations/processed/${presentationId}/presentation.html`
       };
 
     } catch (error) {
@@ -55,101 +53,117 @@ class PresentationProcessor {
     }
   }
 
-  async convertToPDF(inputPath, outputPath) {
+  async convertToHTML(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
-      const command = `libreoffice --headless --convert-to pdf --outdir "${path.dirname(outputPath)}" "${inputPath}"`;
+      // Ensure output directory exists
+      const outputDir = path.dirname(outputPath);
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+        console.log(`Created output directory: ${outputDir}`);
+      }
+
+      const command = `libreoffice --headless --convert-to html --outdir "${outputDir}" "${inputPath}"`;
+      console.log(`Executing LibreOffice command: ${command}`);
       
-      exec(command, (error, stdout, stderr) => {
+      exec(command, { 
+        timeout: 60000,
+        cwd: process.cwd()
+      }, (error, stdout, stderr) => {
         if (error) {
           console.error('LibreOffice conversion error:', error);
-          reject(new Error(`Failed to convert presentation to PDF: ${error.message}`));
+          console.error('LibreOffice stderr:', stderr);
+          reject(new Error(`Failed to convert presentation to HTML: ${error.message}`));
           return;
         }
         
-        // Check if PDF was created
-        if (fs.existsSync(outputPath)) {
-          resolve(outputPath);
-        } else {
-          reject(new Error('PDF conversion failed - output file not found'));
+        console.log('LibreOffice stdout:', stdout);
+        if (stderr) {
+          console.log('LibreOffice stderr:', stderr);
         }
-      });
-    });
-  }
-
-  async convertPDFToImages(pdfPath, imagesDir, thumbnailsDir) {
-    return new Promise((resolve, reject) => {
-      const command = `convert -density 150 "${pdfPath}" -quality 90 "${path.join(imagesDir, 'slide_%d.jpg')}"`;
-      
-      exec(command, async (error, stdout, stderr) => {
-        if (error) {
-          console.error('ImageMagick conversion error:', error);
-          reject(new Error(`Failed to convert PDF to images: ${error.message}`));
-          return;
-        }
-
-        try {
-          // Get list of generated images
-          const files = fs.readdirSync(imagesDir);
-          const slideImages = files
-            .filter(file => file.startsWith('slide_') && file.endsWith('.jpg'))
-            .sort((a, b) => {
-              const aNum = parseInt(a.match(/\d+/)[0]);
-              const bNum = parseInt(b.match(/\d+/)[0]);
-              return aNum - bNum;
-            });
-
-          const slides = [];
-          
-          for (let i = 0; i < slideImages.length; i++) {
-            const imageFile = slideImages[i];
-            const imagePath = path.join(imagesDir, imageFile);
-            const thumbnailFile = `thumb_${imageFile}`;
-            const thumbnailPath = path.join(thumbnailsDir, thumbnailFile);
+        
+        // Wait for file system sync
+        setTimeout(() => {
+          // Check if HTML was created
+          if (fs.existsSync(outputPath)) {
+            console.log(`HTML created successfully: ${outputPath}`);
+            resolve(outputPath);
+          } else {
+            // Check if HTML was created with a different name
+            const dir = path.dirname(outputPath);
+            const files = fs.readdirSync(dir);
+            const htmlFiles = files.filter(file => file.endsWith('.html'));
             
-            // Create thumbnail using ImageMagick
-            await this.createThumbnail(imagePath, thumbnailPath, 300, 200);
+            console.log(`Files in output directory: ${files}`);
+            console.log(`HTML files found: ${htmlFiles}`);
             
-            slides.push({
-              slideNumber: i + 1,
-              imagePath: `presentations/processed/${path.basename(path.dirname(imagesDir))}/slides/${imageFile}`,
-              thumbnailPath: `presentations/processed/${path.basename(path.dirname(imagesDir))}/thumbnails/${thumbnailFile}`
-            });
+            if (htmlFiles.length > 0) {
+              const actualHtmlPath = path.join(dir, htmlFiles[0]);
+              console.log(`HTML created with different name: ${actualHtmlPath}`);
+              // Rename to expected name
+              try {
+                fs.renameSync(actualHtmlPath, outputPath);
+                console.log(`Renamed HTML to: ${outputPath}`);
+                resolve(outputPath);
+              } catch (renameError) {
+                console.error('Error renaming HTML:', renameError);
+                reject(new Error(`Failed to rename HTML file: ${renameError.message}`));
+              }
+            } else {
+              console.error('No HTML files found in directory:', dir);
+              console.error('Files in directory:', files);
+              reject(new Error('HTML conversion failed - output file not found'));
+            }
           }
-
-          resolve(slides);
-        } catch (err) {
-          reject(err);
-        }
-      });
-    });
-  }
-
-  async createThumbnail(inputPath, outputPath, width, height) {
-    return new Promise((resolve, reject) => {
-      const command = `convert "${inputPath}" -resize ${width}x${height} -quality 80 "${outputPath}"`;
-      
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          console.error('Thumbnail creation error:', error);
-          reject(error);
-        } else {
-          resolve();
-        }
+        }, 2000); // Wait 2 seconds for file system sync
       });
     });
   }
 
   async generateThumbnail(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
-      const command = `convert "${inputPath}" -resize 400x300 -quality 85 "${outputPath}"`;
+      // Use LibreOffice to generate a thumbnail
+      const command = `libreoffice --headless --convert-to png --outdir "${path.dirname(outputPath)}" "${inputPath}"`;
+      console.log(`Generating thumbnail: ${command}`);
       
-      exec(command, (error, stdout, stderr) => {
+      exec(command, { 
+        timeout: 30000,
+        cwd: process.cwd()
+      }, (error, stdout, stderr) => {
         if (error) {
           console.error('Thumbnail generation error:', error);
-          reject(error);
-        } else {
+          console.error('Thumbnail stderr:', stderr);
+          // Don't fail the entire process if thumbnail generation fails
+          console.log('Thumbnail generation failed, but continuing...');
           resolve();
+          return;
         }
+
+        console.log('Thumbnail stdout:', stdout);
+        if (stderr) {
+          console.log('Thumbnail stderr:', stderr);
+        }
+
+        // Wait for file system sync
+        setTimeout(() => {
+          const dir = path.dirname(outputPath);
+          const files = fs.readdirSync(dir);
+          const pngFiles = files.filter(file => file.endsWith('.png'));
+          
+          if (pngFiles.length > 0) {
+            const actualPngPath = path.join(dir, pngFiles[0]);
+            try {
+              fs.renameSync(actualPngPath, outputPath);
+              console.log(`Thumbnail generated: ${outputPath}`);
+              resolve();
+            } catch (renameError) {
+              console.error('Error renaming thumbnail:', renameError);
+              resolve(); // Don't fail the process
+            }
+          } else {
+            console.log('No PNG files found for thumbnail, but continuing...');
+            resolve(); // Don't fail the process
+          }
+        }, 1000);
       });
     });
   }

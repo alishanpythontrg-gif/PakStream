@@ -1,5 +1,5 @@
 const Video = require('../models/Video');
-const videoProcessor = require('../services/videoProcessor');
+const VideoProcessor = require('../services/videoProcessor');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -60,7 +60,8 @@ const processVideoAsync = async (videoId, inputPath) => {
 
     const outputDir = path.join(__dirname, '../../uploads/videos/processed', videoId.toString());
     
-    const processedData = await videoProcessor.processVideo(videoId, inputPath, outputDir);
+    const videoProcessor = new VideoProcessor();
+    const processedData = await videoProcessor.processVideo(videoId, inputPath, outputDir, global.io);
     
     video.status = 'ready';
     video.duration = processedData.duration;
@@ -228,15 +229,23 @@ const updateVideo = async (req, res) => {
 
 const deleteVideo = async (req, res) => {
   try {
-    const video = await Video.findOne({
-      _id: req.params.id,
-      uploadedBy: req.user.id
-    });
-
+    // Find video
+    const video = await Video.findById(req.params.id);
+    
     if (!video) {
       return res.status(404).json({
         success: false,
-        message: 'Video not found or access denied'
+        message: 'Video not found'
+      });
+    }
+
+    // ONLY admins can delete videos - no exceptions
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only administrators can delete videos.'
       });
     }
 
@@ -244,19 +253,26 @@ const deleteVideo = async (req, res) => {
     try {
       if (video.originalFile?.path) {
         await fs.unlink(video.originalFile.path);
+        console.log(`Deleted original file: ${video.originalFile.path}`);
       }
       
       const processedDir = path.join(__dirname, '../../uploads/videos/processed', video._id.toString());
-      await fs.rmdir(processedDir, { recursive: true });
+      try {
+        await fs.rmdir(processedDir, { recursive: true });
+        console.log(`Deleted processed directory: ${processedDir}`);
+      } catch (dirError) {
+        console.log(`Processed directory not found or already deleted: ${processedDir}`);
+      }
     } catch (fileError) {
       console.error('Error deleting files:', fileError);
+      // Continue with database deletion even if file deletion fails
     }
 
     await Video.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
-      message: 'Video deleted successfully'
+      message: 'Video deleted successfully by administrator'
     });
   } catch (error) {
     res.status(500).json({
