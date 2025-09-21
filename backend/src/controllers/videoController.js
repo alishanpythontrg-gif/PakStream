@@ -3,7 +3,6 @@ const videoProcessor = require('../services/videoProcessor');
 const path = require('path');
 const fs = require('fs').promises;
 
-// Upload video
 const uploadVideo = async (req, res) => {
   try {
     if (!req.file) {
@@ -14,29 +13,21 @@ const uploadVideo = async (req, res) => {
     }
 
     const { title, description, category, tags } = req.body;
-    const uploadedBy = req.user._id;
-
-    // Validate required fields
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title and description are required'
-      });
-    }
-
+    
     // Create video record
     const video = new Video({
       title,
       description,
-      uploadedBy,
+      category: category || 'general',
+      tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+      uploadedBy: req.user.id,
       originalFile: {
         filename: req.file.filename,
         path: req.file.path,
         size: req.file.size,
         mimetype: req.file.mimetype
       },
-      category: category || 'other',
-      tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+      status: 'uploading'
     });
 
     await video.save();
@@ -47,87 +38,65 @@ const uploadVideo = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Video uploaded successfully. Processing started.',
-      data: {
-        video: {
-          id: video._id,
-          title: video.title,
-          status: video.status,
-          uploadDate: video.createdAt
-        }
-      }
+      data: { video }
     });
-
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({
       success: false,
-      message: 'Video upload failed',
+      message: 'Failed to upload video',
       error: error.message
     });
   }
 };
 
-// Process video asynchronously
 const processVideoAsync = async (videoId, inputPath) => {
   try {
     const video = await Video.findById(videoId);
     if (!video) return;
 
-    // Update status to processing
     video.status = 'processing';
-    video.processingProgress = 0;
     await video.save();
 
-    const outputDir = path.join('uploads/videos/processed', videoId.toString());
+    const outputDir = path.join(__dirname, '../../uploads/videos/processed', videoId.toString());
     
-    // Process video
-    const result = await videoProcessor.processVideo(videoId, inputPath, outputDir);
+    const processedData = await videoProcessor.processVideo(videoId, inputPath, outputDir);
     
-    // Update video with processed data
     video.status = 'ready';
-    video.processingProgress = 100;
-    video.duration = result.duration;
-    video.resolution = result.resolution;
-    video.fileSize = result.fileSize;
-    video.processedFiles = result.processedFiles;
+    video.duration = processedData.duration;
+    video.resolution = processedData.resolution;
+    video.fileSize = processedData.fileSize;
+    video.processedFiles = processedData.processedFiles;
     
     await video.save();
-
-    // Clean up original file
-    await videoProcessor.cleanupTempFiles(inputPath);
-
+    
     console.log(`Video processing completed for ${videoId}`);
-
   } catch (error) {
     console.error('Video processing error:', error);
     
-    // Update video status to error
-    try {
-      const video = await Video.findById(videoId);
-      if (video) {
-        video.status = 'error';
-        video.processingError = error.message;
-        await video.save();
-      }
-    } catch (updateError) {
-      console.error('Error updating video status:', updateError);
+    const video = await Video.findById(videoId);
+    if (video) {
+      video.status = 'error';
+      video.processingError = error.message;
+      await video.save();
     }
   }
 };
 
-// Get all videos
 const getVideos = async (req, res) => {
   try {
     const { page = 1, limit = 10, category, search, status } = req.query;
     const skip = (page - 1) * limit;
 
     let query = { isPublic: true };
-    
     if (category) query.category = category;
-    if (status) query.status = status;
     if (search) {
-      query.$text = { $search: search };
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
+    if (status) query.status = status;
 
     const videos = await Video.find(query)
       .populate('uploadedBy', 'username email')
@@ -148,9 +117,7 @@ const getVideos = async (req, res) => {
         }
       }
     });
-
   } catch (error) {
-    console.error('Get videos error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch videos',
@@ -159,12 +126,9 @@ const getVideos = async (req, res) => {
   }
 };
 
-// Get video by ID
 const getVideoById = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const video = await Video.findById(id)
+    const video = await Video.findById(req.params.id)
       .populate('uploadedBy', 'username email');
 
     if (!video) {
@@ -182,9 +146,7 @@ const getVideoById = async (req, res) => {
       success: true,
       data: { video }
     });
-
   } catch (error) {
-    console.error('Get video error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch video',
@@ -193,19 +155,18 @@ const getVideoById = async (req, res) => {
   }
 };
 
-// Get user's videos
 const getUserVideos = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
-    const userId = req.user._id;
 
-    const videos = await Video.find({ uploadedBy: userId })
+    const videos = await Video.find({ uploadedBy: req.user.id })
+      .populate('uploadedBy', 'username email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Video.countDocuments({ uploadedBy: userId });
+    const total = await Video.countDocuments({ uploadedBy: req.user.id });
 
     res.json({
       success: true,
@@ -218,9 +179,7 @@ const getUserVideos = async (req, res) => {
         }
       }
     });
-
   } catch (error) {
-    console.error('Get user videos error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user videos',
@@ -229,39 +188,27 @@ const getUserVideos = async (req, res) => {
   }
 };
 
-// Update video
 const updateVideo = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { title, description, category, tags, isPublic, isFeatured } = req.body;
-    const userId = req.user._id;
-
-    const video = await Video.findById(id);
+    const { title, description, category, tags, isPublic } = req.body;
     
+    const video = await Video.findOne({
+      _id: req.params.id,
+      uploadedBy: req.user.id
+    });
+
     if (!video) {
       return res.status(404).json({
         success: false,
-        message: 'Video not found'
+        message: 'Video not found or access denied'
       });
     }
 
-    // Check if user owns the video or is admin
-    if (video.uploadedBy.toString() !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this video'
-      });
-    }
-
-    // Update fields
     if (title) video.title = title;
     if (description) video.description = description;
     if (category) video.category = category;
     if (tags) video.tags = tags.split(',').map(tag => tag.trim());
-    if (typeof isPublic === 'boolean') video.isPublic = isPublic;
-    if (typeof isFeatured === 'boolean' && req.user.role === 'admin') {
-      video.isFeatured = isFeatured;
-    }
+    if (typeof isPublic !== 'undefined') video.isPublic = isPublic;
 
     await video.save();
 
@@ -270,9 +217,7 @@ const updateVideo = async (req, res) => {
       message: 'Video updated successfully',
       data: { video }
     });
-
   } catch (error) {
-    console.error('Update video error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update video',
@@ -281,42 +226,39 @@ const updateVideo = async (req, res) => {
   }
 };
 
-// Delete video
 const deleteVideo = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user._id;
+    const video = await Video.findOne({
+      _id: req.params.id,
+      uploadedBy: req.user.id
+    });
 
-    const video = await Video.findById(id);
-    
     if (!video) {
       return res.status(404).json({
         success: false,
-        message: 'Video not found'
-      });
-    }
-
-    // Check if user owns the video or is admin
-    if (video.uploadedBy.toString() !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this video'
+        message: 'Video not found or access denied'
       });
     }
 
     // Delete files
-    await deleteVideoFiles(video);
+    try {
+      if (video.originalFile?.path) {
+        await fs.unlink(video.originalFile.path);
+      }
+      
+      const processedDir = path.join(__dirname, '../../uploads/videos/processed', video._id.toString());
+      await fs.rmdir(processedDir, { recursive: true });
+    } catch (fileError) {
+      console.error('Error deleting files:', fileError);
+    }
 
-    // Delete video record
-    await Video.findByIdAndDelete(id);
+    await Video.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
       message: 'Video deleted successfully'
     });
-
   } catch (error) {
-    console.error('Delete video error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete video',
@@ -325,30 +267,9 @@ const deleteVideo = async (req, res) => {
   }
 };
 
-// Helper function to delete video files
-const deleteVideoFiles = async (video) => {
-  try {
-    // Delete original file
-    if (video.originalFile && video.originalFile.path) {
-      await fs.unlink(video.originalFile.path);
-    }
-
-    // Delete processed files
-    if (video.processedFiles) {
-      const processedDir = path.join('uploads/videos/processed', video._id.toString());
-      await fs.rmdir(processedDir, { recursive: true });
-    }
-  } catch (error) {
-    console.error('Error deleting video files:', error);
-  }
-};
-
-// Get video processing status
 const getVideoStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const video = await Video.findById(id).select('status processingProgress processingError');
+    const video = await Video.findById(req.params.id);
     
     if (!video) {
       return res.status(404).json({
@@ -361,13 +282,11 @@ const getVideoStatus = async (req, res) => {
       success: true,
       data: {
         status: video.status,
-        progress: video.processingProgress,
+        processingProgress: video.processingProgress || 0,
         error: video.processingError
       }
     });
-
   } catch (error) {
-    console.error('Get video status error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get video status',

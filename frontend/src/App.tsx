@@ -3,6 +3,7 @@ import { AuthProvider } from './hooks';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import VideoGrid from './components/video/VideoGrid';
+import VideoPlayer from './components/video/VideoPlayer';
 import AdminVideoDashboard from './components/video/AdminVideoDashboard';
 import videoService from './services/videoService';
 import { Video } from './types/video';
@@ -12,6 +13,7 @@ function App() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
   useEffect(() => {
     fetchVideos();
@@ -31,10 +33,12 @@ function App() {
 
   const handleVideoClick = (video: Video) => {
     setSelectedVideo(video);
+    setShowVideoPlayer(true);
   };
 
   const handleCloseVideo = () => {
     setSelectedVideo(null);
+    setShowVideoPlayer(false);
   };
 
   return (
@@ -60,37 +64,94 @@ function App() {
           <AdminVideoDashboard />
         </main>
 
-        {/* Video Player Modal */}
-        {selectedVideo && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-6xl max-h-[90vh] bg-netflix-gray rounded-lg overflow-hidden">
-              <div className="flex justify-between items-center p-4 border-b border-gray-600">
-                <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
+        {/* Inline Video Player */}
+        {showVideoPlayer && selectedVideo && (
+          <div className="fixed inset-0 bg-black bg-opacity-95 z-50">
+            <div className="h-full flex flex-col">
+              {/* Header */}
+              <div className="flex justify-between items-center p-4 bg-netflix-black border-b border-gray-600">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
+                  <p className="text-gray-400 text-sm">{selectedVideo.category} • {selectedVideo.views} views</p>
+                </div>
                 <button
                   onClick={handleCloseVideo}
-                  className="text-gray-400 hover:text-white text-2xl"
+                  className="text-gray-400 hover:text-white text-2xl p-2"
                 >
                   ×
                 </button>
               </div>
-              <div className="p-4">
-                <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                  <video
-                    src={videoService.getVideoUrl(selectedVideo, '720p')}
-                    controls
-                    className="w-full h-full"
-                    poster={videoService.getPosterUrl(selectedVideo)}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+
+              {/* Video Player */}
+              <div className="flex-1 flex">
+                <div className="flex-1">
+                  <VideoPlayer
+                    video={selectedVideo}
+                    autoPlay={true}
+                    controls={true}
+                    className="h-full"
+                    onClose={handleCloseVideo}
+                  />
                 </div>
-                <div className="mt-4 text-white">
-                  <h3 className="text-lg font-semibold mb-2">{selectedVideo.title}</h3>
-                  <p className="text-gray-300 mb-4">{selectedVideo.description}</p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-400">
-                    <span>{selectedVideo.views} views</span>
-                    <span>{selectedVideo.category}</span>
-                    <span>{selectedVideo.duration}s</span>
+
+                {/* Video Info Sidebar */}
+                <div className="w-80 bg-netflix-gray p-6 overflow-y-auto">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Description</h3>
+                      <p className="text-gray-300 text-sm">{selectedVideo.description}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Details</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Duration:</span>
+                          <span className="text-white">{Math.floor(selectedVideo.duration / 60)}:{(selectedVideo.duration % 60).toString().padStart(2, '0')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Resolution:</span>
+                          <span className="text-white">{selectedVideo.resolution}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Category:</span>
+                          <span className="text-white capitalize">{selectedVideo.category}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Uploaded by:</span>
+                          <span className="text-white">{selectedVideo.uploadedBy.username}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Upload date:</span>
+                          <span className="text-white">{new Date(selectedVideo.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedVideo.tags && selectedVideo.tags.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-2">Tags</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedVideo.tags.map((tag, index) => (
+                            <span key={index} className="px-2 py-1 bg-gray-700 text-white text-xs rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Actions</h3>
+                      <div className="space-y-2">
+                        <button className="w-full btn-primary text-sm">
+                          Add to My List
+                        </button>
+                        <button className="w-full btn-secondary text-sm">
+                          Share
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

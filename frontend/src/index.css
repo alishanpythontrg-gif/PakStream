@@ -21,3 +21,51 @@
     @apply relative overflow-hidden rounded-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10;
   }
 }
+
+/* Custom Video Player Styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: #4a5568;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #e53e3e;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #c53030;
+}
+
+.slider::-moz-range-track {
+  background: #4a5568;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  background: #e53e3e;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.slider::-moz-range-thumb:hover {
+  background: #c53030;
+}

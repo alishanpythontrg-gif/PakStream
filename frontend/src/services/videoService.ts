@@ -107,17 +107,14 @@ class VideoService {
     return this.request<{ success: boolean; data: VideoStatus }>(`/videos/${id}/status`);
   }
 
-  getVideoUrl(video: Video, quality: string = '720p'): string {
+  getVideoUrl(video: Video, quality: string = '360p'): string {
     if (video.status !== 'ready' || !video.processedFiles?.hls) {
       return '';
     }
 
     const variant = video.processedFiles.hls.variants.find(v => v.resolution === quality);
     if (!variant) {
-      // Fallback to first available quality
-      const firstVariant = video.processedFiles.hls.variants[0];
-      if (!firstVariant) return '';
-      return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${firstVariant.playlist}`;
+      return '';
     }
 
     return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${variant.playlist}`;
@@ -145,6 +142,14 @@ class VideoService {
     }
 
     return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.poster}`;
+  }
+
+  getOriginalVideoUrl(video: Video): string {
+    if (!video.originalFile?.path) {
+      return '';
+    }
+
+    return `${API_BASE_URL.replace('/api', '')}/api/videos/${video._id}/original`;
   }
 }
 

@@ -11,7 +11,12 @@ const ensureUploadDirs = async () => {
   ];
   
   for (const dir of dirs) {
-    await fs.mkdir(dir, { recursive: true });
+    try {
+      await fs.mkdir(dir, { recursive: true });
+      console.log('Created directory:', dir);
+    } catch (error) {
+      console.error('Error creating directory:', dir, error);
+    }
   }
 };
 
@@ -21,17 +26,28 @@ ensureUploadDirs();
 // Configure multer for video uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/videos/original');
+    const dest = 'uploads/videos/original';
+    console.log('Saving file to:', dest);
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, `video-${uniqueSuffix}${ext}`);
+    const filename = `video-${uniqueSuffix}${ext}`;
+    console.log('Generated filename:', filename);
+    cb(null, filename);
   }
 });
 
 // File filter for video files
 const fileFilter = (req, file, cb) => {
+  console.log('File upload attempt:', {
+    fieldname: file.fieldname,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size
+  });
+  
   const allowedMimes = [
     'video/mp4',
     'video/avi',
@@ -40,12 +56,19 @@ const fileFilter = (req, file, cb) => {
     'video/flv',
     'video/webm',
     'video/mkv',
-    'video/3gp'
+    'video/3gp',
+    'application/octet-stream' // Allow this for MP4 files
   ];
   
-  if (allowedMimes.includes(file.mimetype)) {
+  const allowedExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.3gp'];
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+  
+  // Check by MIME type or file extension
+  if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+    console.log('File accepted:', file.originalname, 'MIME type:', file.mimetype, 'Extension:', fileExtension);
     cb(null, true);
   } else {
+    console.log('File rejected:', file.originalname, 'MIME type:', file.mimetype, 'Extension:', fileExtension);
     cb(new Error('Invalid file type. Only video files are allowed.'), false);
   }
 };
@@ -62,6 +85,8 @@ const upload = multer({
 
 // Error handling middleware
 const handleUploadError = (error, req, res, next) => {
+  console.error('Upload error:', error);
+  
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({

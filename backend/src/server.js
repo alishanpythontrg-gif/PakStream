@@ -77,4 +77,5 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Video uploads: http://localhost:${PORT}/videos/`);
+  console.log(`Original videos: http://localhost:${PORT}/api/videos/:id/original`);
 });

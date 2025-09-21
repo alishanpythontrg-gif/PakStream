@@ -36,6 +36,8 @@ class VideoProcessor {
       // Generate master playlist
       const masterPlaylist = await this.generateMasterPlaylist(variants, hlsDir, videoId);
       
+      console.log(`Video processing completed for ${videoId}`);
+      
       return {
         duration: metadata.duration,
         resolution: metadata.resolution,
@@ -202,15 +204,6 @@ class VideoProcessor {
       '1080p': '1920x1080'
     };
     return resMap[resolution] || '640x360';
-  }
-
-  async cleanupTempFiles(filePath) {
-    try {
-      await fs.unlink(filePath);
-      console.log(`Cleaned up temp file: ${filePath}`);
-    } catch (error) {
-      console.error('Error cleaning up temp file:', error);
-    }
   }
 }
 
