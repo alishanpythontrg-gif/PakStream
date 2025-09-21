@@ -6,42 +6,70 @@ import VideoGrid from './components/video/VideoGrid';
 import VideoPlayer from './components/video/VideoPlayer';
 import AdminVideoDashboard from './components/video/AdminVideoDashboard';
 import AdminPremiereDashboard from './components/premiere/AdminPremiereDashboard';
+import PresentationGrid from './components/presentation/PresentationGrid';
+import PresentationViewer from './components/presentation/PresentationViewer';
+import AdminPresentationDashboard from './components/presentation/AdminPresentationDashboard';
 import LivePremiere from './components/premiere/LivePremiere';
 import ScheduledPremiere from './components/premiere/ScheduledPremiere';
 import videoService from './services/videoService';
+import presentationService from './services/presentationService';
 import premiereService from './services/premiereService';
 import { Video } from './types/video';
+import { Presentation } from './types/presentation';
 import { Premiere } from './types/premiere';
 import './index.css';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
+  const [presentations, setPresentations] = useState<Presentation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedPresentation, setSelectedPresentation] = useState<Presentation | null>(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [showPresentationViewer, setShowPresentationViewer] = useState(false);
   const [activePremiere, setActivePremiere] = useState<Premiere | null>(null);
   const [showPremiere, setShowPremiere] = useState(false);
 
   useEffect(() => {
     console.log('App mounted, checking for active premiere...');
-    fetchVideos();
-    checkActivePremiere();
+    initializeApp();
     
     // Check for active premiere every 10 seconds
     const interval = setInterval(checkActivePremiere, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchVideos = async () => {
+  const initializeApp = async () => {
     try {
       setLoading(true);
+      await Promise.all([
+        fetchVideos(),
+        fetchPresentations(),
+        checkActivePremiere()
+      ]);
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchVideos = async () => {
+    try {
       const response = await videoService.getVideos({ limit: 12 });
       setVideos(response.data.videos);
     } catch (error) {
       console.error('Failed to fetch videos:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchPresentations = async () => {
+    try {
+      const response = await presentationService.getPresentations({ limit: 12 });
+      setPresentations(response.presentations);
+    } catch (error) {
+      console.error('Failed to fetch presentations:', error);
     }
   };
 
@@ -70,9 +98,19 @@ const AppContent: React.FC = () => {
     setShowVideoPlayer(true);
   };
 
+  const handlePresentationClick = (presentation: Presentation) => {
+    setSelectedPresentation(presentation);
+    setShowPresentationViewer(true);
+  };
+
   const handleCloseVideoPlayer = () => {
     setShowVideoPlayer(false);
     setSelectedVideo(null);
+  };
+
+  const handleClosePresentationViewer = () => {
+    setShowPresentationViewer(false);
+    setSelectedPresentation(null);
   };
 
   const handleClosePremiere = () => {
@@ -83,7 +121,10 @@ const AppContent: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-xl">Loading PakStream...</p>
+        </div>
       </div>
     );
   }
@@ -124,6 +165,17 @@ const AppContent: React.FC = () => {
           </div>
         </section>
 
+        {/* Presentations Section */}
+        <section id="presentations" className="py-16">
+          <div className="container mx-auto px-6">
+            <h2 className="text-3xl font-bold text-white mb-8">Presentations</h2>
+            <PresentationGrid 
+              presentations={presentations} 
+              onPresentationClick={handlePresentationClick}
+            />
+          </div>
+        </section>
+
         {/* Premieres Section */}
         <section id="premieres" className="py-16">
           <div className="container mx-auto px-6">
@@ -148,11 +200,22 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
+        {/* Presentation Viewer Modal - Full Screen */}
+        {showPresentationViewer && selectedPresentation && (
+          <PresentationViewer
+            presentation={selectedPresentation}
+            onClose={handleClosePresentationViewer}
+          />
+        )}
+
         {/* Admin Dashboard */}
         {user?.role === 'admin' && (
           <div className="container mx-auto px-6 py-8">
             <div id="admin-videos">
               <AdminVideoDashboard />
+            </div>
+            <div id="admin-presentations" className="mt-16">
+              <AdminPresentationDashboard />
             </div>
             <div id="admin-premieres" className="mt-16">
               <AdminPremiereDashboard />

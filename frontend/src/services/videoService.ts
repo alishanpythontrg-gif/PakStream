@@ -52,7 +52,8 @@ class VideoService {
     limit?: number;
     category?: string;
     search?: string;
-    status?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   } = {}): Promise<VideosResponse> {
     const queryParams = new URLSearchParams();
     
@@ -60,40 +61,26 @@ class VideoService {
     if (params.limit) queryParams.append('limit', params.limit.toString());
     if (params.category) queryParams.append('category', params.category);
     if (params.search) queryParams.append('search', params.search);
-    if (params.status) queryParams.append('status', params.status);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
     const queryString = queryParams.toString();
     const endpoint = queryString ? `/videos?${queryString}` : '/videos';
-
+    
     return this.request<VideosResponse>(endpoint);
   }
 
-  async getVideoById(id: string): Promise<VideoResponse> {
+  async getVideo(id: string): Promise<VideoResponse> {
     return this.request<VideoResponse>(`/videos/${id}`);
   }
 
-  async getUserVideos(params: {
-    page?: number;
-    limit?: number;
-  } = {}): Promise<VideosResponse> {
-    const queryParams = new URLSearchParams();
-    
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `/videos/user/my-videos?${queryString}` : '/videos/user/my-videos';
-
-    return this.request<VideosResponse>(endpoint);
-  }
-
-  async updateVideo(id: string, updateData: Partial<VideoUploadData & { isPublic: boolean }>): Promise<VideoResponse> {
+  async updateVideo(id: string, updates: Partial<Video>): Promise<VideoResponse> {
     return this.request<VideoResponse>(`/videos/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(updates),
     });
   }
 
@@ -117,7 +104,7 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${variant.playlist}`;
+    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${variant.playlist}`;
   }
 
   getMasterPlaylistUrl(video: Video): string {
@@ -125,7 +112,7 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.hls.masterPlaylist}`;
+    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.hls.masterPlaylist}`;
   }
 
   getThumbnailUrl(video: Video, index: number = 0): string {
@@ -133,7 +120,7 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.thumbnails[index]}`;
+    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.thumbnails[index]}`;
   }
 
   getPosterUrl(video: Video): string {
@@ -141,7 +128,7 @@ class VideoService {
       return this.getThumbnailUrl(video, 0);
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.poster}`;
+    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
   }
 
   getOriginalVideoUrl(video: Video): string {

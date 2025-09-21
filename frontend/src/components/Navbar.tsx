@@ -34,14 +34,20 @@ const Navbar: React.FC = () => {
               <div className="text-2xl font-bold text-netflix-red">
                 🎬 PakStream
               </div>
-              
-              {/* Navigation Links - Only Videos and Premieres */}
+
+              {/* Navigation Links */}
               <div className="hidden md:flex items-center space-x-6">
                 <button
                   onClick={() => scrollToSection('videos')}
                   className="text-white hover:text-gray-300 transition-colors"
                 >
                   Videos
+                </button>
+                <button
+                  onClick={() => scrollToSection('presentations')}
+                  className="text-white hover:text-gray-300 transition-colors"
+                >
+                  Presentations
                 </button>
                 <button
                   onClick={() => scrollToSection('premieres')}
@@ -56,16 +62,24 @@ const Navbar: React.FC = () => {
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
-                  {/* Upload Video Button for Admins */}
+                  {/* Upload Buttons for Admins */}
                   {user.role === 'admin' && (
-                    <button
-                      onClick={() => scrollToSection('admin-videos')}
-                      className="btn-primary text-sm"
-                    >
-                      Upload Video
-                    </button>
+                    <>
+                      <button
+                        onClick={() => scrollToSection('admin-videos')}
+                        className="btn-primary text-sm"
+                      >
+                        Upload Video
+                      </button>
+                      <button
+                        onClick={() => scrollToSection('admin-presentations')}
+                        className="btn-secondary text-sm"
+                      >
+                        Upload Presentation
+                      </button>
+                    </>
                   )}
-                  
+
                   {/* User Profile */}
                   <div className="relative">
                     <button
@@ -82,7 +96,7 @@ const Navbar: React.FC = () => {
                         </span>
                       )}
                     </button>
-                    
+
                     {showUserProfile && (
                       <UserProfile
                         user={user}
@@ -128,7 +142,7 @@ const Navbar: React.FC = () => {
           setShowRegisterModal(true);
         }}
       />
-      
+
       <RegisterModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
@@ -141,7 +155,7 @@ const Navbar: React.FC = () => {
           setShowAdminRegisterModal(true);
         }}
       />
-      
+
       <AdminRegisterModal
         isOpen={showAdminRegisterModal}
         onClose={() => setShowAdminRegisterModal(false)}
