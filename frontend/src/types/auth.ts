@@ -1,0 +1,55 @@
+export interface User {
+  _id: string;
+  username: string;
+  email: string;
+  role: 'user' | 'admin';
+  isActive: boolean;
+  profile: {
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    bio?: string;
+  };
+  preferences: {
+    theme: string;
+    language: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: User;
+    token: string;
+  };
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface AdminRegisterCredentials extends RegisterCredentials {
+  adminKey: string;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
+  registerAdmin: (credentials: AdminRegisterCredentials) => Promise<void>;
+  logout: () => void;
+  updateProfile: (data: Partial<User['profile']>) => Promise<void>;
+  loading: boolean;
+  error: string | null;
+}

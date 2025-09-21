@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-netflix-black text-white font-sans;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-gray-400 text-white hover:bg-gray-700 font-bold py-2 px-4 rounded transition duration-300;
+  }
+  
+  .video-thumbnail {
+    @apply relative overflow-hidden rounded-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10;
+  }
+}

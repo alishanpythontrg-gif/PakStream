@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PakStream Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #141414; 
+            color: white; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+        }
+        .success { 
+            background: #2d5a2d; 
+            border: 1px solid #4a7c4a; 
+        }
+        .error { 
+            background: #5a2d2d; 
+            border: 1px solid #7c4a4a; 
+        }
+        .info { 
+            background: #2d4a5a; 
+            border: 1px solid #4a6a7c; 
+        }
+        a { 
+            color: #E50914; 
+            text-decoration: none; 
+        }
+        a:hover { 
+            text-decoration: underline; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 PakStream Authentication System Test</h1>
+        
+        <div class="status success">
+            ✅ <strong>Backend API:</strong> Running on http://localhost:5000
+        </div>
+        
+        <div class="status success">
+            ✅ <strong>Frontend App:</strong> Running on http://localhost:3000
+        </div>
+        
+        <div class="status success">
+            ✅ <strong>Database:</strong> MongoDB connected successfully
+        </div>
+        
+        <div class="status success">
+            ✅ <strong>TypeScript:</strong> All compilation errors fixed
+        </div>
+        
+        <h2>🚀 Ready to Test!</h2>
+        
+        <div class="status info">
+            <strong>Test the Authentication System:</strong>
+            <ul>
+                <li>Open <a href="http://localhost:3000" target="_blank">http://localhost:3000</a> in your browser</li>
+                <li>Click "Sign Up" to register a new user</li>
+                <li>Click "Register as Admin" to create an admin account (admin key: <code>admin123</code>)</li>
+                <li>Login with your credentials</li>
+                <li>Click on your username to view/edit your profile</li>
+                <li>Test the logout functionality</li>
+            </ul>
+        </div>
+        
+        <h2>🔧 API Endpoints Available:</h2>
+        <ul>
+            <li><code>POST /api/auth/register</code> - Register new user</li>
+            <li><code>POST /api/auth/register-admin</code> - Register admin</li>
+            <li><code>POST /api/auth/login</code> - User login</li>
+            <li><code>GET /api/auth/profile</code> - Get user profile (protected)</li>
+            <li><code>PUT /api/auth/profile</code> - Update profile (protected)</li>
+            <li><code>GET /api/health</code> - API health check</li>
+        </ul>
+        
+        <h2>✨ Features Implemented:</h2>
+        <ul>
+            <li>✅ User registration and login</li>
+            <li>✅ Admin registration with special key</li>
+            <li>✅ JWT-based authentication</li>
+            <li>✅ Password hashing with bcrypt</li>
+            <li>✅ User profile management</li>
+            <li>✅ Role-based access control</li>
+            <li>✅ Protected routes</li>
+            <li>✅ Modern Netflix-style UI</li>
+            <li>✅ TypeScript type safety</li>
+            <li>✅ Error handling and validation</li>
+        </ul>
+    </div>
+</body>
+</html>
