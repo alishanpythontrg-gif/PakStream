@@ -14,19 +14,24 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
   onSwitchToLogin, 
   onSwitchToAdminRegister 
 }) => {
-  const { register, loading, error } = useAuth();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setLoading(true);
+    setError('');
+
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
+      setLoading(false);
       return;
     }
 
@@ -37,22 +42,17 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
         password: formData.password
       });
       onClose();
-    } catch (error) {
-      // Error is handled by the useAuth hook
+    } catch (err) {
+      setError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-netflix-gray rounded-lg p-8 w-full max-w-md">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white">Sign Up</h2>
@@ -64,79 +64,69 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-600 text-white p-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-white text-sm font-medium mb-2">
               Username
             </label>
             <input
               type="text"
-              id="username"
-              name="username"
               value={formData.username}
-              onChange={handleChange}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
               required
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-white text-sm font-medium mb-2">
               Email
             </label>
             <input
               type="email"
-              id="email"
-              name="email"
               value={formData.email}
-              onChange={handleChange}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
               required
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-white text-sm font-medium mb-2">
               Password
             </label>
             <input
               type="password"
-              id="password"
-              name="password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
               required
-              minLength={6}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
             />
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-white text-sm font-medium mb-2">
               Confirm Password
             </label>
             <input
               type="password"
-              id="confirmPassword"
-              name="confirmPassword"
               value={formData.confirmPassword}
-              onChange={handleChange}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
               required
-              minLength={6}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full btn-primary disabled:opacity-50"
           >
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
@@ -149,7 +139,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
               onClick={onSwitchToLogin}
               className="text-netflix-red hover:underline"
             >
-              Login
+              Sign in
             </button>
           </p>
           <p className="text-gray-400">
@@ -158,7 +148,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
               onClick={onSwitchToAdminRegister}
               className="text-netflix-red hover:underline"
             >
-              Register as Admin
+              Admin Sign Up
             </button>
           </p>
         </div>

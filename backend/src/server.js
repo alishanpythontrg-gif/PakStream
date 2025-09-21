@@ -79,3 +79,8 @@ app.listen(PORT, () => {
   console.log(`Video uploads: http://localhost:${PORT}/videos/`);
   console.log(`Original videos: http://localhost:${PORT}/api/videos/:id/original`);
 });
+
+// API routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/videos', require('./routes/video'));
+app.use('/api/premieres', require('./routes/premiere'));

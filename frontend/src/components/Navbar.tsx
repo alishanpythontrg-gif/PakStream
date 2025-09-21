@@ -4,138 +4,135 @@ import LoginModal from './auth/LoginModal';
 import RegisterModal from './auth/RegisterModal';
 import AdminRegisterModal from './auth/AdminRegisterModal';
 import UserProfile from './auth/UserProfile';
-import VideoUploadModal from './video/VideoUploadModal';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
-  const [showAdminRegister, setShowAdminRegister] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showVideoUpload, setShowVideoUpload] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showAdminRegisterModal, setShowAdminRegisterModal] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
-  const handleLoginClick = () => {
-    setShowLogin(true);
-    setShowRegister(false);
-    setShowAdminRegister(false);
+  const handleLogout = () => {
+    logout();
+    setShowUserProfile(false);
   };
 
-  const handleRegisterClick = () => {
-    setShowRegister(true);
-    setShowLogin(false);
-    setShowAdminRegister(false);
-  };
-
-  const handleAdminRegisterClick = () => {
-    setShowAdminRegister(true);
-    setShowLogin(false);
-    setShowRegister(false);
-  };
-
-  const handleSwitchToLogin = () => {
-    setShowLogin(true);
-    setShowRegister(false);
-    setShowAdminRegister(false);
-  };
-
-  const handleSwitchToRegister = () => {
-    setShowRegister(true);
-    setShowLogin(false);
-    setShowAdminRegister(false);
-  };
-
-  const handleSwitchToAdminRegister = () => {
-    setShowAdminRegister(true);
-    setShowLogin(false);
-    setShowRegister(false);
-  };
-
-  const closeAllModals = () => {
-    setShowLogin(false);
-    setShowRegister(false);
-    setShowAdminRegister(false);
-    setShowProfile(false);
-    setShowVideoUpload(false);
-  };
-
-  const handleUploadSuccess = () => {
-    // You can add logic here to refresh video lists or show success message
-    console.log('Video uploaded successfully!');
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-netflix-black bg-opacity-95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 bg-netflix-black bg-opacity-95 backdrop-blur-sm z-40 border-b border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-netflix-red">PakStream</h1>
+            <div className="flex items-center space-x-8">
+              <div className="text-2xl font-bold text-netflix-red">
+                🎬 PakStream
+              </div>
+              
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center space-x-6">
+                <button
+                  onClick={() => scrollToSection('featured')}
+                  className="text-white hover:text-gray-300 transition-colors"
+                >
+                  Featured
+                </button>
+                <button
+                  onClick={() => scrollToSection('trending')}
+                  className="text-white hover:text-gray-300 transition-colors"
+                >
+                  Trending
+                </button>
+                <button
+                  onClick={() => scrollToSection('new-releases')}
+                  className="text-white hover:text-gray-300 transition-colors"
+                >
+                  New Releases
+                </button>
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={() => scrollToSection('admin-videos')}
+                    className="text-white hover:text-gray-300 transition-colors"
+                  >
+                    Admin Videos
+                  </button>
+                )}
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={() => scrollToSection('admin-premieres')}
+                    className="text-white hover:text-gray-300 transition-colors"
+                  >
+                    Premieres
+                  </button>
+                )}
+              </div>
             </div>
-            
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-6">
-              <a href="#" className="text-white hover:text-gray-300 transition duration-300">Home</a>
-              <a href="#" className="text-white hover:text-gray-300 transition duration-300">Movies</a>
-              <a href="#" className="text-white hover:text-gray-300 transition duration-300">TV Shows</a>
-              <a href="#" className="text-white hover:text-gray-300 transition duration-300">My List</a>
-            </div>
-            
-            {/* Auth Section */}
+
+            {/* User Actions */}
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
-                  {/* Admin Upload Button */}
+                  {/* Upload Video Button for Admins */}
                   {user.role === 'admin' && (
                     <button
-                      onClick={() => setShowVideoUpload(true)}
+                      onClick={() => scrollToSection('admin-videos')}
                       className="btn-primary text-sm"
                     >
                       Upload Video
                     </button>
                   )}
                   
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-netflix-red rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-bold">
+                  {/* User Profile */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowUserProfile(!showUserProfile)}
+                      className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors"
+                    >
+                      <div className="w-8 h-8 bg-netflix-red rounded-full flex items-center justify-center">
                         {user.username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="text-white text-sm">
-                      {user.username}
-                    </span>
-                    {user.role === 'admin' && (
-                      <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">
-                        ADMIN
-                      </span>
+                      </div>
+                      <span className="hidden md:block">{user.username}</span>
+                      {user.role === 'admin' && (
+                        <span className="hidden md:block text-xs bg-red-600 px-2 py-1 rounded">
+                          Admin
+                        </span>
+                      )}
+                    </button>
+                    
+                    {showUserProfile && (
+                      <UserProfile
+                        user={user}
+                        onClose={() => setShowUserProfile(false)}
+                        onLogout={handleLogout}
+                      />
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowProfile(true)}
-                    className="text-white hover:text-gray-300 transition duration-300"
-                  >
-                    Profile
-                  </button>
-                  <button
-                    onClick={logout}
-                    className="btn-secondary"
-                  >
-                    Logout
-                  </button>
                 </div>
               ) : (
                 <div className="flex items-center space-x-4">
-                  <button 
-                    onClick={handleLoginClick}
-                    className="btn-secondary"
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="text-white hover:text-gray-300 transition-colors"
                   >
-                    Login
+                    Sign In
                   </button>
-                  <button 
-                    onClick={handleRegisterClick}
+                  <button
+                    onClick={() => setShowRegisterModal(true)}
                     className="btn-primary"
                   >
                     Sign Up
+                  </button>
+                  <button
+                    onClick={() => setShowAdminRegisterModal(true)}
+                    className="btn-secondary text-sm"
+                  >
+                    Admin Sign Up
                   </button>
                 </div>
               )}
@@ -146,34 +143,38 @@ const Navbar: React.FC = () => {
 
       {/* Modals */}
       <LoginModal
-        isOpen={showLogin}
-        onClose={closeAllModals}
-        onSwitchToRegister={handleSwitchToRegister}
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToRegister={() => {
+          setShowLoginModal(false);
+          setShowRegisterModal(true);
+        }}
       />
-
+      
       <RegisterModal
-        isOpen={showRegister}
-        onClose={closeAllModals}
-        onSwitchToLogin={handleSwitchToLogin}
-        onSwitchToAdminRegister={handleSwitchToAdminRegister}
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onSwitchToLogin={() => {
+          setShowRegisterModal(false);
+          setShowLoginModal(true);
+        }}
+        onSwitchToAdminRegister={() => {
+          setShowRegisterModal(false);
+          setShowAdminRegisterModal(true);
+        }}
       />
-
+      
       <AdminRegisterModal
-        isOpen={showAdminRegister}
-        onClose={closeAllModals}
-        onSwitchToLogin={handleSwitchToLogin}
-        onSwitchToRegister={handleSwitchToRegister}
-      />
-
-      <UserProfile
-        isOpen={showProfile}
-        onClose={closeAllModals}
-      />
-
-      <VideoUploadModal
-        isOpen={showVideoUpload}
-        onClose={closeAllModals}
-        onUploadSuccess={handleUploadSuccess}
+        isOpen={showAdminRegisterModal}
+        onClose={() => setShowAdminRegisterModal(false)}
+        onSwitchToLogin={() => {
+          setShowAdminRegisterModal(false);
+          setShowLoginModal(true);
+        }}
+        onSwitchToRegister={() => {
+          setShowAdminRegisterModal(false);
+          setShowRegisterModal(true);
+        }}
       />
     </>
   );

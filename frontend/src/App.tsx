@@ -5,8 +5,13 @@ import HeroSection from './components/HeroSection';
 import VideoGrid from './components/video/VideoGrid';
 import VideoPlayer from './components/video/VideoPlayer';
 import AdminVideoDashboard from './components/video/AdminVideoDashboard';
+import AdminPremiereDashboard from './components/premiere/AdminPremiereDashboard';
+import LivePremiere from './components/premiere/LivePremiere';
+import ScheduledPremiere from './components/premiere/ScheduledPremiere';
 import videoService from './services/videoService';
+import premiereService from './services/premiereService';
 import { Video } from './types/video';
+import { Premiere } from './types/premiere';
 import './index.css';
 
 function App() {
@@ -14,9 +19,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [activePremiere, setActivePremiere] = useState<Premiere | null>(null);
+  const [showPremiere, setShowPremiere] = useState(false);
 
   useEffect(() => {
     fetchVideos();
+    checkActivePremiere();
+    
+    // Check for active premiere every 30 seconds
+    const interval = setInterval(checkActivePremiere, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchVideos = async () => {
@@ -31,7 +43,27 @@ function App() {
     }
   };
 
+  const checkActivePremiere = async () => {
+    try {
+      const response = await premiereService.getActivePremiere();
+      if (response.data.premiere) {
+        setActivePremiere(response.data.premiere);
+        setShowPremiere(true);
+      } else {
+        setActivePremiere(null);
+        setShowPremiere(false);
+      }
+    } catch (error) {
+      console.error('Failed to check active premiere:', error);
+    }
+  };
+
   const handleVideoClick = (video: Video) => {
+    // Don't show video player if there's an active premiere
+    if (activePremiere) {
+      return;
+    }
+    
     setSelectedVideo(video);
     setShowVideoPlayer(true);
   };
@@ -39,6 +71,10 @@ function App() {
   const handleCloseVideo = () => {
     setSelectedVideo(null);
     setShowVideoPlayer(false);
+  };
+
+  const handleClosePremiere = () => {
+    setShowPremiere(false);
   };
 
   return (
@@ -62,10 +98,29 @@ function App() {
 
           {/* Admin Video Dashboard - Only visible to admins */}
           <AdminVideoDashboard />
+          
+          {/* Admin Premiere Dashboard - Only visible to admins */}
+          <AdminPremiereDashboard />
         </main>
 
+        {/* Live Premiere Overlay */}
+        {showPremiere && activePremiere && premiereService.isPremiereLive(activePremiere) && (
+          <LivePremiere
+            premiere={activePremiere}
+            onClose={handleClosePremiere}
+          />
+        )}
+
+        {/* Scheduled Premiere Overlay */}
+        {showPremiere && activePremiere && premiereService.isPremiereScheduled(activePremiere) && (
+          <ScheduledPremiere
+            premiere={activePremiere}
+            onClose={handleClosePremiere}
+          />
+        )}
+
         {/* Inline Video Player */}
-        {showVideoPlayer && selectedVideo && (
+        {showVideoPlayer && selectedVideo && !activePremiere && (
           <div className="fixed inset-0 bg-black bg-opacity-95 z-50">
             <div className="h-full flex flex-col">
               {/* Header */}
