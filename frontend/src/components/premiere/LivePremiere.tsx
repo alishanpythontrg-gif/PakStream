@@ -136,11 +136,11 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
 
   // Convert premiere video to Video type for VideoPlayer
   const videoForPlayer: Video = {
-    _id: premiere.video._id,
-    title: premiere.video.title,
-    description: premiere.video.description,
-    duration: premiere.video.duration,
-    resolution: premiere.video.resolution,
+    _id: premiere.video?._id,
+    title: premiere.video?.title,
+    description: premiere.video?.description,
+    duration: premiere.video?.duration,
+    resolution: premiere.video?.resolution,
     fileSize: 0,
     uploadedBy: {
       _id: premiere.createdBy._id,
@@ -152,7 +152,7 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
       path: '',
       size: 0,
       mimetype: 'video/mp4',
-      duration: premiere.video.duration
+      duration: premiere.video?.duration
     },
     status: 'ready',
     processingProgress: 100,
@@ -167,17 +167,17 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     updatedAt: premiere.updatedAt,
     processedFiles: {
       hls: {
-        masterPlaylist: premiere.video.processedFiles.hls.masterPlaylist,
+        masterPlaylist: premiere.video?.processedFiles.hls.masterPlaylist,
         segments: [],
-        variants: premiere.video.processedFiles.hls.variants.map(v => ({
+        variants: premiere.video?.processedFiles.hls.variants.map(v => ({
           resolution: v.resolution,
           bitrate: v.bitrate,
           playlist: v.playlist,
           segments: v.segments
         })) as VideoVariant[]
       },
-      thumbnails: premiere.video.processedFiles.thumbnails,
-      poster: premiere.video.processedFiles.poster
+      thumbnails: premiere.video?.processedFiles.thumbnails,
+      poster: premiere.video?.processedFiles.poster
     }
   };
 
@@ -255,12 +255,12 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
             
             <div className="flex items-center space-x-4">
               <div className="text-center">
-                <div className="text-white font-bold">{premiere.video.resolution}</div>
+                <div className="text-white font-bold">{premiere.video?.resolution}</div>
                 <div className="text-gray-400 text-xs">Quality</div>
               </div>
               <div className="text-center">
                 <div className="text-white font-bold">
-                  {Math.floor(premiere.video.duration / 60)}:{(premiere.video.duration % 60).toString().padStart(2, '0')}
+                  {Math.floor(premiere.video?.duration / 60)}:{(premiere.video?.duration % 60).toString().padStart(2, '0')}
                 </div>
                 <div className="text-gray-400 text-xs">Duration</div>
               </div>

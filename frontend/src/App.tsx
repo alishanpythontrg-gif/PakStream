@@ -160,6 +160,7 @@ const AppContent: React.FC = () => {
             <h2 className="text-3xl font-bold text-white mb-8">Videos</h2>
             <VideoGrid 
               videos={videos} 
+              loading={loading}
               onVideoClick={handleVideoClick}
             />
           </div>

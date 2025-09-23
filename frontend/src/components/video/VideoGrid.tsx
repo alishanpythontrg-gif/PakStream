@@ -1,190 +1,166 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Video } from '../../types/video';
-import videoService from '../../services/videoService';
-import VideoPlayer from './VideoPlayer';
 
 interface VideoGridProps {
   videos: Video[];
-  loading?: boolean;
-  onVideoClick?: (video: Video) => void;
-  showUploadButton?: boolean;
-  onUploadClick?: () => void;
+  loading: boolean;
+  onVideoClick: (video: Video) => void;
+  onDeleteClick?: (video: Video) => void;
+  showDeleteButton?: boolean;
 }
 
 const VideoGrid: React.FC<VideoGridProps> = ({ 
   videos, 
-  loading = false, 
-  onVideoClick,
-  showUploadButton = false,
-  onUploadClick
+  loading, 
+  onVideoClick, 
+  onDeleteClick,
+  showDeleteButton = false 
 }) => {
-  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
-
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ready': return 'bg-green-600';
-      case 'processing': return 'bg-yellow-600';
-      case 'uploading': return 'bg-blue-600';
-      case 'error': return 'bg-red-600';
-      default: return 'bg-gray-600';
+      case 'ready':
+        return 'text-green-400';
+      case 'processing':
+        return 'text-yellow-400';
+      case 'uploading':
+        return 'text-blue-400';
+      case 'error':
+        return 'text-red-400';
+      default:
+        return 'text-gray-400';
     }
   };
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="bg-gray-700 rounded-lg h-40 mb-2"></div>
-            <div className="bg-gray-700 rounded h-4 mb-1"></div>
-            <div className="bg-gray-700 rounded h-3 w-2/3"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {[...Array(8)].map((_, index) => (
+          <div key={index} className="bg-netflix-gray rounded-lg overflow-hidden animate-pulse">
+            <div className="aspect-video bg-gray-700"></div>
+            <div className="p-4">
+              <div className="h-4 bg-gray-700 rounded mb-2"></div>
+              <div className="h-3 bg-gray-700 rounded w-2/3"></div>
+            </div>
           </div>
         ))}
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {showUploadButton && onUploadClick && (
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">My Videos</h2>
-          <button
-            onClick={onUploadClick}
-            className="btn-primary"
-          >
-            Upload Video
-          </button>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {videos.map((video) => (
-          <div
-            key={video._id}
-            className="video-thumbnail group cursor-pointer"
-            onMouseEnter={() => setHoveredVideo(video._id)}
-            onMouseLeave={() => setHoveredVideo(null)}
-            onClick={() => onVideoClick?.(video)}
-          >
-            <div className="relative">
-              {/* Thumbnail/Poster */}
-              <div className="relative h-40 bg-gray-800 rounded-lg overflow-hidden">
-                {video.status === 'ready' && videoService.getPosterUrl(video) ? (
-                  <img
-                    src={videoService.getPosterUrl(video)}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center text-gray-400">
-                      <div className="text-2xl mb-2">
-                        {video.status === 'processing' ? '⏳' : 
-                         video.status === 'error' ? '❌' : '📹'}
-                      </div>
-                      <div className="text-sm">
-                        {video.status === 'processing' ? 'Processing...' :
-                         video.status === 'error' ? 'Error' : 'No Preview'}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-300 rounded-lg flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {video.status === 'ready' ? (
-                      <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <div className="text-white text-center">
-                        <div className="text-2xl mb-1">
-                          {video.status === 'processing' ? '⏳' : '❌'}
-                        </div>
-                        <div className="text-xs">
-                          {video.status === 'processing' ? 'Processing...' : 'Error'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status Badge */}
-                <div className="absolute top-2 left-2">
-                  <span className={`px-2 py-1 rounded text-xs text-white ${getStatusColor(video.status)}`}>
-                    {video.status.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Duration */}
-                {video.duration && (
-                  <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                    {formatDuration(video.duration)}
-                  </div>
-                )}
-
-                {/* Processing Progress */}
-                {video.status === 'processing' && video.processingProgress !== undefined && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gray-700 h-1">
-                    <div
-                      className="bg-netflix-red h-1 transition-all duration-300"
-                      style={{ width: `${video.processingProgress}%` }}
-                    ></div>
-                  </div>
-                )}
-              </div>
-
-              {/* Video Info */}
-              <div className="mt-2">
-                <h3 className="text-sm font-medium text-white truncate" title={video.title}>
-                  {video.title}
-                </h3>
-                <p className="text-xs text-gray-400 truncate" title={video.description}>
-                  {video.description}
-                </p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-gray-500">
-                    {video.views} views
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {video.category}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+  if (videos.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-lg mb-4">No videos found</div>
+        <p className="text-gray-500">Try adjusting your filters or upload a new video</p>
       </div>
+    );
+  }
 
-      {videos.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📹</div>
-          <h3 className="text-xl font-semibold text-white mb-2">No videos found</h3>
-          <p className="text-gray-400">
-            {showUploadButton ? 'Upload your first video to get started!' : 'Check back later for new content.'}
-          </p>
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {videos.map((video) => (
+        <div key={video._id} className="bg-netflix-gray rounded-lg overflow-hidden group hover:scale-105 transition-transform">
+          <div className="relative aspect-video bg-black">
+            {video.processedFiles?.poster ? (
+              <img
+                src={`http://localhost:5000/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`}
+                alt={video.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-gray-400 text-center">
+                  <div className="text-4xl mb-2">��</div>
+                  <div className="text-sm">No thumbnail</div>
+                </div>
+              </div>
+            )}
+            
+            {/* Status Badge */}
+            <div className="absolute top-2 left-2">
+              <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(video.status)} bg-black bg-opacity-75`}>
+                {video.status.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Duration Badge */}
+            <div className="absolute top-2 right-2">
+              <span className="px-2 py-1 rounded text-xs font-semibold text-white bg-black bg-opacity-75">
+                {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
+
+            {/* Play Button Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-30">
+              <button
+                onClick={() => onVideoClick(video)}
+                className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors"
+              >
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Delete Button (Admin only) */}
+            {showDeleteButton && onDeleteClick && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteClick(video);
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors"
+                  title="Delete video"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4">
+            <h3 className="text-white font-semibold mb-2 line-clamp-2">{video.title}</h3>
+            <p className="text-gray-400 text-sm mb-3 line-clamp-2">{video.description}</p>
+            
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span className="capitalize">{video.category}</span>
+              <span>{video.views} views</span>
+            </div>
+
+            <div className="mt-2 text-xs text-gray-500">
+              <div>Size: {formatFileSize(video.fileSize)}</div>
+              <div>Resolution: {video.resolution}</div>
+              <div>Uploaded by: {video.uploadedBy.username}</div>
+            </div>
+
+            {video.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {video.tags.slice(0, 3).map((tag, index) => (
+                  <span key={index} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
+                    {tag}
+                  </span>
+                ))}
+                {video.tags.length > 3 && (
+                  <span className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
+                    +{video.tags.length - 3} more
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };

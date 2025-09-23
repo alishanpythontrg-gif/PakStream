@@ -50,6 +50,21 @@ class SocketService {
     return this.isConnected && this.socket?.connected;
   }
 
+  // Generic event listeners
+  on(event: string, callback: (...args: any[]) => void) {
+    const socket = this.getSocket();
+    if (socket) {
+      socket.on(event, callback);
+    }
+  }
+
+  off(event: string, callback?: (...args: any[]) => void) {
+    const socket = this.getSocket();
+    if (socket) {
+      socket.off(event, callback);
+    }
+  }
+
   // Premiere-related methods
   joinPremiere(premiereId: string) {
     const socket = this.getSocket();

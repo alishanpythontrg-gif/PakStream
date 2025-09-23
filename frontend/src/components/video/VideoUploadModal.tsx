@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import VideoProcessingProgress from '../VideoProcessingProgress';
 import { useAuth } from '../../hooks';
 import videoService from '../../services/videoService';
 import { VideoUploadData } from '../../types/video';
@@ -24,6 +25,8 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingVideoId, setProcessingVideoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,7 +106,12 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         });
       }, 200);
 
-      await videoService.uploadVideo(selectedFile, uploadData);
+      const response = await videoService.uploadVideo(selectedFile, uploadData);
+      
+      if (response.success && response.data.video._id) {
+        setProcessingVideoId(response.data.video._id);
+        setIsProcessing(true);
+      }
       
       clearInterval(progressInterval);
       setUploadProgress(100);

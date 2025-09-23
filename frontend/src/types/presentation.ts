@@ -32,6 +32,7 @@ export interface PresentationSlide {
   slideNumber: number;
   imagePath: string;
   thumbnailPath: string;
+  type?: 'html' | 'image'; // Added type property for HTML vs image slides
   notes?: string;
 }
 

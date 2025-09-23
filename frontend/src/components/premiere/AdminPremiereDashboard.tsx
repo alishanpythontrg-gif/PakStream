@@ -138,10 +138,10 @@ const AdminPremiereDashboard: React.FC = () => {
 
   // Helper function to get poster URL for premiere video
   const getPremierePosterUrl = (premiere: Premiere): string => {
-    if (!premiere.video.processedFiles?.poster) {
+    if (!premiere.video?.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${premiere.video._id}/hls/${premiere.video.processedFiles.poster}`;
+    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${premiere.video?._id}/hls/${premiere.video?.processedFiles.poster}`;
   };
 
   if (loading) {
@@ -232,13 +232,13 @@ const AdminPremiereDashboard: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {premieres.map((premiere) => (
+              {premieres.filter(premiere => premiere.video && premiere.video.processedFiles).map((premiere) => (
                 <div
                   key={premiere._id}
                   className="bg-netflix-gray rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
                 >
                   <div className="aspect-video bg-gray-700 flex items-center justify-center">
-                    {premiere.video.processedFiles?.poster ? (
+                    {premiere.video?.processedFiles?.poster ? (
                       <img
                         src={getPremierePosterUrl(premiere)}
                         alt={premiere.title}

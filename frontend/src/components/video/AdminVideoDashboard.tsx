@@ -10,6 +10,9 @@ const AdminVideoDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState({
     status: '',
     category: '',
@@ -47,6 +50,39 @@ const AdminVideoDashboard: React.FC = () => {
     setSelectedVideo(null);
   };
 
+  const handleDeleteClick = (video: Video) => {
+    setVideoToDelete(video);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!videoToDelete) return;
+
+    try {
+      setDeleting(true);
+      await videoService.deleteVideo(videoToDelete._id);
+      
+      // Remove video from local state
+      setVideos(prev => prev.filter(v => v._id !== videoToDelete._id));
+      
+      setShowDeleteModal(false);
+      setVideoToDelete(null);
+      
+      // Show success message (you could add a toast notification here)
+      console.log('Video deleted successfully by administrator');
+    } catch (error) {
+      console.error('Failed to delete video:', error);
+      // Show error message (you could add a toast notification here)
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setVideoToDelete(null);
+  };
+
   const handleFilterChange = (key: string, value: string) => {
     setFilter(prev => ({
       ...prev,
@@ -73,8 +109,8 @@ const AdminVideoDashboard: React.FC = () => {
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Video Management</h1>
-              <p className="text-gray-400">Manage and monitor all videos</p>
+              <h1 className="text-3xl font-bold text-white mb-2">Admin Video Management</h1>
+              <p className="text-gray-400">Administrators can manage and delete all videos</p>
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
@@ -82,6 +118,19 @@ const AdminVideoDashboard: React.FC = () => {
             >
               Upload Video
             </button>
+          </div>
+
+          {/* Admin Notice */}
+          <div className="bg-yellow-900 border border-yellow-600 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <div className="text-yellow-400 text-xl mr-3">⚠️</div>
+              <div>
+                <h3 className="text-yellow-400 font-semibold">Administrator Only</h3>
+                <p className="text-yellow-200 text-sm">
+                  Only users with administrator role can delete videos. Regular users cannot delete any videos, including their own.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -164,6 +213,8 @@ const AdminVideoDashboard: React.FC = () => {
             videos={videos}
             loading={loading}
             onVideoClick={handleVideoClick}
+            onDeleteClick={handleDeleteClick}
+            showDeleteButton={true}
           />
 
           {/* Video Detail Modal */}
@@ -210,6 +261,70 @@ const AdminVideoDashboard: React.FC = () => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Admin Actions */}
+                <div className="mt-6 pt-6 border-t border-gray-600">
+                  <h3 className="text-lg font-semibold text-white mb-4">Administrator Actions</h3>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => {
+                        handleDeleteClick(selectedVideo);
+                        handleCloseVideo();
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      🗑️ Delete Video (Admin Only)
+                    </button>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Only administrators can delete videos. Regular users cannot delete any videos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && videoToDelete && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-netflix-gray rounded-lg p-6 w-full max-w-md">
+                <div className="flex items-center mb-4">
+                  <div className="text-red-500 text-4xl mr-4">⚠️</div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Admin Delete Video</h2>
+                    <p className="text-gray-400">Administrator action - cannot be undone</p>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-white mb-2">
+                    Are you sure you want to delete this video as an administrator?
+                  </p>
+                  <div className="bg-gray-700 p-3 rounded-lg">
+                    <h3 className="text-white font-semibold">{videoToDelete.title}</h3>
+                    <p className="text-gray-300 text-sm">{videoToDelete.description}</p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      Uploaded by: {videoToDelete.uploadedBy.username}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleDeleteCancel}
+                    disabled={deleting}
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteConfirm}
+                    disabled={deleting}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete as Admin'}
+                  </button>
                 </div>
               </div>
             </div>

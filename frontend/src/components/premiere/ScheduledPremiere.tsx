@@ -42,10 +42,10 @@ const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose
 
   // Helper function to get poster URL for premiere video
   const getPremierePosterUrl = (premiere: Premiere): string => {
-    if (!premiere.video.processedFiles?.poster) {
+    if (!premiere.video?.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${premiere.video._id}/hls/${premiere.video.processedFiles.poster}`;
+    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${premiere.video?._id}/hls/${premiere.video?.processedFiles.poster}`;
   };
 
   return (
@@ -66,7 +66,7 @@ const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Video Preview */}
           <div className="aspect-video bg-gray-700 rounded-lg overflow-hidden">
-            {premiere.video.processedFiles?.poster ? (
+            {premiere.video?.processedFiles?.poster ? (
               <img
                 src={getPremierePosterUrl(premiere)}
                 alt={premiere.title}
@@ -97,12 +97,12 @@ const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose
                   <div className="flex justify-between">
                     <span className="text-gray-400">Duration:</span>
                     <span className="text-white">
-                      {Math.floor(premiere.video.duration / 60)}:{(premiere.video.duration % 60).toString().padStart(2, '0')}
+                      {Math.floor(premiere.video?.duration / 60)}:{(premiere.video?.duration % 60).toString().padStart(2, '0')}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Quality:</span>
-                    <span className="text-white">{premiere.video.resolution}</span>
+                    <span className="text-white">{premiere.video?.resolution}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Created by:</span>
