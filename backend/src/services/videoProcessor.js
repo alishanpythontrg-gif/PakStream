@@ -231,17 +231,18 @@ class VideoProcessor {
           '-hls_list_size 0',
           '-hls_segment_filename', segmentPattern,
           '-f hls',
-          '-preset medium', // Better quality/speed balance (was ultrafast)
+          '-preset fast', // Faster encoding, less memory
           '-crf 23', // Better quality (lower CRF = better quality, was 28)
           '-maxrate', quality.bitrate,
           '-bufsize', `${parseInt(quality.bitrate) * 2}k`,
           '-avoid_negative_ts make_zero',
           '-fflags +genpts',
-          '-threads 0', // Use all available CPU cores
+          '-threads 4', // Limit threads to reduce memory usage
           '-profile:v main', // H.264 profile for better compatibility
           '-movflags +faststart', // Enable fast start for better streaming
           '-g 48', // GOP size (keyframe interval) for better seeking
-          '-sc_threshold 0' // Disable scene detection to prevent extra keyframes
+          '-sc_threshold 0', // Disable scene detection to prevent extra keyframes
+          '-max_muxing_queue_size 1024' // Prevent muxing queue overflow
         ])
         .output(playlistPath)
         .on('start', (commandLine) => {
@@ -278,11 +279,11 @@ class VideoProcessor {
           reject(err);
         });
 
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging (increased for large videos)
       const timeout = setTimeout(() => {
         command.kill('SIGKILL');
         reject(new Error(`FFmpeg timeout for ${quality.resolution}`));
-      }, 300000); // 5 minutes timeout per variant
+      }, 900000); // 15 minutes timeout per variant
 
       command.on('end', () => clearTimeout(timeout));
       command.on('error', () => clearTimeout(timeout));

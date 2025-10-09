@@ -41,8 +41,8 @@ const AppContent: React.FC = () => {
     
     initializeApp();
     
-    // Check for active premiere every 10 seconds
-    const interval = setInterval(checkActivePremiere, 10000);
+    // Check for active premiere every 30 seconds (reduced from 10s)
+    const interval = setInterval(checkActivePremiere, 30000);
     
     return () => {
       clearInterval(interval);
@@ -91,12 +91,22 @@ const AppContent: React.FC = () => {
       
       if (response.data.premiere) {
         console.log('Found active premiere:', response.data.premiere);
-        setActivePremiere(response.data.premiere);
+        
+        // Only update if premiere ID changed (prevent unnecessary re-renders)
+        setActivePremiere(prev => {
+          if (prev && prev._id === response.data.premiere._id) {
+            console.log('Same premiere, skipping update');
+            return prev; // Keep same reference
+          }
+          return response.data.premiere; // New premiere
+        });
         setShowPremiere(true);
       } else {
         console.log('No active premiere found');
-        setActivePremiere(null);
-        setShowPremiere(false);
+        if (activePremiere !== null) {
+          setActivePremiere(null);
+          setShowPremiere(false);
+        }
       }
     } catch (error) {
       console.error('Failed to check active premiere:', error);

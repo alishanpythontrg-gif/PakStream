@@ -3,7 +3,7 @@ const VideoProcessor = require('./videoProcessor');
 const path = require('path');
 
 class VideoQueue {
-  constructor(maxConcurrent = 2) {
+  constructor(maxConcurrent = 1) { // Reduce to 1 to prevent memory issues
     this.queue = [];
     this.processing = new Map();
     this.maxConcurrent = maxConcurrent;
