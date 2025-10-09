@@ -47,9 +47,12 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const [selectedQuality, setSelectedQuality] = useState<string>('auto');
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
-  const [buffered, setBuffered] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializingRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const MAX_RETRY_ATTEMPTS = 3;
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -82,7 +85,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   }));
 
   useEffect(() => {
-    if (!video) return;
+    if (!video || !video._id) return;
+
+    // Prevent re-initialization if already initialized for this video
+    if (isInitializingRef.current) {
+      console.log('Already initializing, skipping...');
+      return;
+    }
 
     const initializeVideo = async () => {
       try {
@@ -106,10 +115,25 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
 
         // Get HLS URL
         const hlsUrl = videoService.getMasterPlaylistUrl(video);
-        console.log('Loading video:', hlsUrl);
+        console.log('Loading video:', video._id, 'HLS URL:', hlsUrl);
+        console.log('Video status:', video.status);
+        console.log('Video processedFiles:', video.processedFiles);
 
         if (!hlsUrl) {
-          setError('Video not ready for playback');
+          let errorMessage = 'Video not ready for playback';
+          
+          if (video.status !== 'ready') {
+            errorMessage = `Video is ${video.status}. Please wait for processing to complete.`;
+          } else if (!video.processedFiles) {
+            errorMessage = 'Video processing files are missing. Please contact support.';
+          } else if (!video.processedFiles.hls) {
+            errorMessage = 'Video HLS files are missing. Please contact support.';
+          } else if (!video.processedFiles.hls.masterPlaylist) {
+            errorMessage = 'Video master playlist is missing. Please contact support.';
+          }
+          
+          console.error('Cannot load video:', errorMessage);
+          setError(errorMessage);
           setIsLoading(false);
           isInitializingRef.current = false;
           return;
@@ -138,39 +162,83 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
             
             // Set up quality options
             const levels = hls.levels;
-            const qualities = levels.map((level, index) => ({
-              index,
-              height: level.height,
-              bitrate: level.bitrate,
-              label: `${level.height}p`
-            }));
+            const qualities = levels
+              .filter(level => level.height && level.height > 0) // Filter out invalid heights
+              .map((level, index) => ({
+                index,
+                height: level.height,
+                bitrate: level.bitrate,
+                label: `${level.height}p`
+              }));
             
+            console.log('Available qualities:', qualities);
             setAvailableQualities(['auto', ...qualities.map(q => q.label)]);
           });
 
           hls.on(Hls.Events.ERROR, (event, data) => {
             console.error('HLS error:', data);
+            
             if (data.fatal) {
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  setError(`Network Error: ${data.details}. Please check your connection and try again.`);
+                  console.log('Fatal network error encountered, attempting recovery...');
+                  if (retryCountRef.current < MAX_RETRY_ATTEMPTS) {
+                    setIsRetrying(true);
+                    retryCountRef.current += 1;
+                    setRetryCount(retryCountRef.current);
+                    setTimeout(() => {
+                      console.log(`Retry attempt ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS}`);
+                      hls.startLoad();
+                      setIsRetrying(false);
+                    }, 1000 * Math.pow(2, retryCountRef.current - 1)); // Exponential backoff
+                  } else {
+                    setError(`Network Error: ${data.details}. Maximum retry attempts reached. Please check your connection.`);
+                    setIsLoading(false);
+                    isInitializingRef.current = false;
+                  }
                   break;
+                  
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  setError(`Media Error: ${data.details}. The video file may be corrupted.`);
+                  console.log('Fatal media error encountered, attempting recovery...');
+                  if (retryCountRef.current < MAX_RETRY_ATTEMPTS) {
+                    setIsRetrying(true);
+                    retryCountRef.current += 1;
+                    setRetryCount(retryCountRef.current);
+                    setTimeout(() => {
+                      console.log(`Media error recovery attempt ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS}`);
+                      hls.recoverMediaError();
+                      setIsRetrying(false);
+                    }, 500);
+                  } else {
+                    setError(`Media Error: ${data.details}. The video file may be corrupted or incompatible.`);
+                    setIsLoading(false);
+                    isInitializingRef.current = false;
+                  }
                   break;
+                  
                 default:
                   setError(`HLS Error: ${data.type} - ${data.details}`);
+                  setIsLoading(false);
+                  isInitializingRef.current = false;
                   break;
               }
-              setIsLoading(false);
-              isInitializingRef.current = false;
+            } else {
+              // Non-fatal errors - just log them
+              console.warn('Non-fatal HLS error:', data.type, data.details);
             }
           });
 
           hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
             const level = hls.levels[data.level];
-            if (level) {
-              setSelectedQuality(`${level.height}p`);
+            if (level && level.height && level.height > 0 && hls.currentLevel !== -1) {
+              // Only update if not in auto mode and height is valid
+              const qualityLabel = `${level.height}p`;
+              setSelectedQuality(qualityLabel);
+              console.log('Quality switched to:', qualityLabel, 'from level:', level);
+            } else if (hls.currentLevel === -1) {
+              // Auto mode
+              setSelectedQuality('auto');
+              console.log('Quality set to auto mode');
             }
           });
 
@@ -194,7 +262,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
 
         const handleTimeUpdate = () => {
           setCurrentTime(videoElement.currentTime);
-          setBuffered(videoElement.buffered.length > 0 ? videoElement.buffered.end(videoElement.buffered.length - 1) : 0);
         };
 
         const handlePlay = () => {
@@ -266,17 +333,31 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
         hlsRef.current = null;
       }
       isInitializingRef.current = false;
+      retryCountRef.current = 0;
     };
-  }, [video, autoPlay]);
+  }, [video?._id]); // Only re-initialize when video ID changes
 
   // Handle quality change
   const handleQualityChange = (quality: string) => {
-    if (!hlsRef.current || quality === 'auto') return;
+    if (!hlsRef.current) return;
     
-    const levelIndex = availableQualities.findIndex(q => q === quality) - 1;
-    if (levelIndex >= 0) {
-      hlsRef.current.currentLevel = levelIndex;
-      setSelectedQuality(quality);
+    if (quality === 'auto') {
+      // Enable automatic quality selection
+      hlsRef.current.currentLevel = -1; // -1 enables auto quality
+      setSelectedQuality('auto');
+      console.log('Switched to auto quality');
+    } else {
+      // Find the actual level index by matching the quality label with level heights
+      const targetHeight = parseInt(quality.replace('p', '')); // Extract height from "360p" -> 360
+      const levelIndex = hlsRef.current.levels.findIndex(level => level.height === targetHeight);
+      
+      if (levelIndex >= 0 && levelIndex < hlsRef.current.levels.length) {
+        hlsRef.current.currentLevel = levelIndex;
+        setSelectedQuality(quality);
+        console.log(`Switched to quality: ${quality} (level index: ${levelIndex})`);
+      } else {
+        console.warn(`Could not find level for quality: ${quality}`);
+      }
     }
   };
 
@@ -293,12 +374,19 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     }
   };
 
-  // Handle seek
-  const handleSeek = (time: number) => {
-    if (!videoRef.current) return;
-    videoRef.current.currentTime = time;
-    setCurrentTime(time);
-    onSeek?.(time);
+  // Handle seek from progress bar click
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!videoRef.current || !duration) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * duration;
+    
+    videoRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+    onSeek?.(newTime);
   };
 
   // Handle volume change
@@ -340,32 +428,48 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000);
+    // Hide controls after 3 seconds of inactivity (only when playing)
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
   };
 
   if (error) {
     return (
       <div className={`bg-black flex items-center justify-center ${className}`}>
-        <div className="text-center text-white p-8">
+        <div className="text-center text-white p-8 max-w-md">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h3 className="text-xl font-bold mb-2">Video Error</h3>
           <p className="text-gray-300 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-          >
-            Retry
-          </button>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded ml-2"
-            >
-              Close
-            </button>
+          {retryCount > 0 && (
+            <p className="text-sm text-gray-400 mb-4">
+              Retry attempts: {retryCount}/{MAX_RETRY_ATTEMPTS}
+            </p>
           )}
+          <div className="flex justify-center space-x-2">
+            <button
+              onClick={() => {
+                setError(null);
+                setRetryCount(0);
+                retryCountRef.current = 0;
+                setIsRetrying(false);
+                window.location.reload();
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
+            >
+              🔄 Reload Page
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors"
+              >
+                ✕ Close
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -384,43 +488,67 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
         preload="metadata"
       />
       
-      {isLoading && (
+      {(isLoading || isRetrying) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="text-center text-white">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p>Loading video...</p>
+            {isRetrying ? (
+              <>
+                <p>Reconnecting...</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Attempt {retryCount}/{MAX_RETRY_ATTEMPTS}
+                </p>
+              </>
+            ) : (
+              <p>Loading video...</p>
+            )}
           </div>
         </div>
       )}
 
-      {controls && showControls && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+      {controls && (
+        <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
           {/* Progress bar */}
-          <div className="mb-4">
-            <div className="w-full bg-gray-600 rounded-full h-1">
+          <div className="px-4 pt-4 pb-2">
+            <div 
+              className="w-full bg-gray-700 rounded-full h-1.5 cursor-pointer hover:h-2 transition-all group relative"
+              onClick={handleProgressBarClick}
+              title="Click to seek"
+            >
               <div 
-                className="bg-red-600 h-1 rounded-full transition-all duration-200"
+                className="bg-red-600 h-full rounded-full transition-all duration-200 relative"
                 style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-              />
+              >
+                {/* Seek handle */}
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"></div>
+              </div>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center space-x-4">
-              <button onClick={handlePlayPause} className="hover:text-gray-300">
+          <div className="flex items-center justify-between text-white px-4 pb-4">
+            <div className="flex items-center space-x-3">
+              <button 
+                onClick={handlePlayPause} 
+                className="hover:text-gray-300 hover:scale-110 transition-transform text-2xl"
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
                 {isPlaying ? '⏸️' : '▶️'}
               </button>
               
-              <span className="text-sm">
+              <span className="text-sm font-medium">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* Volume control */}
               <div className="flex items-center space-x-2">
-                <button onClick={handleMuteToggle} className="hover:text-gray-300">
+                <button 
+                  onClick={handleMuteToggle} 
+                  className="hover:text-gray-300 hover:scale-110 transition-transform text-xl"
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
                   {isMuted ? '🔇' : '🔊'}
                 </button>
                 <input
@@ -430,21 +558,24 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                   step="0.1"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  className="w-20"
+                  className="w-20 cursor-pointer"
                 />
               </div>
 
-              {/* Quality selector */}
-              {availableQualities.length > 1 && (
+              {/* Quality selector - always show if we have HLS */}
+              {Hls.isSupported() && availableQualities.length > 0 && (
                 <div className="relative">
                   <button
                     onClick={() => setShowQualityMenu(!showQualityMenu)}
-                    className="hover:text-gray-300"
+                    className="hover:text-gray-300 hover:bg-gray-700 px-3 py-1.5 bg-gray-800 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                    title="Video quality settings"
                   >
-                    {selectedQuality}p
+                    <span className="text-base">⚙️</span>
+                    <span>{selectedQuality === 'auto' ? 'Auto' : selectedQuality}</span>
                   </button>
                   {showQualityMenu && (
-                    <div className="absolute bottom-8 right-0 bg-black bg-opacity-90 rounded p-2 min-w-20">
+                    <div className="absolute bottom-12 right-0 bg-gray-900 bg-opacity-98 rounded-lg shadow-2xl p-2 min-w-[140px] border-2 border-gray-600 z-50">
+                      <div className="text-xs text-gray-400 px-3 py-1 font-semibold uppercase">Quality</div>
                       {availableQualities.map(quality => (
                         <button
                           key={quality}
@@ -452,11 +583,16 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                             handleQualityChange(quality);
                             setShowQualityMenu(false);
                           }}
-                          className={`block w-full text-left px-2 py-1 hover:bg-gray-700 ${
-                            quality === selectedQuality ? 'text-red-500' : 'text-white'
+                          className={`block w-full text-left px-3 py-2 rounded transition-colors text-sm ${
+                            quality === selectedQuality 
+                              ? 'bg-red-600 text-white font-semibold' 
+                              : 'text-gray-200 hover:bg-gray-700 hover:text-white'
                           }`}
                         >
-                          {quality}
+                          <div className="flex items-center justify-between">
+                            <span>{quality === 'auto' ? 'Auto (recommended)' : quality}</span>
+                            {quality === selectedQuality && <span className="text-green-400">✓</span>}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -464,12 +600,20 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                 </div>
               )}
 
-              <button onClick={handleFullscreenToggle} className="hover:text-gray-300">
+              <button 
+                onClick={handleFullscreenToggle} 
+                className="hover:text-gray-300 hover:scale-110 transition-transform text-xl"
+                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              >
                 {isFullscreen ? '⤢' : '⤡'}
               </button>
 
               {onClose && (
-                <button onClick={onClose} className="hover:text-gray-300">
+                <button 
+                  onClick={onClose} 
+                  className="hover:text-gray-300 hover:scale-110 transition-transform text-2xl"
+                  title="Close player"
+                >
                   ✕
                 </button>
               )}

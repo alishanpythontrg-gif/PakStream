@@ -12,6 +12,10 @@ const app = express();
 const server = http.createServer(app);
 const socketHandler = new SocketHandler(server);
 
+// Initialize video queue with socket.io
+const videoQueue = require('./services/videoQueue');
+videoQueue.setSocketIO(socketHandler.io);
+
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 

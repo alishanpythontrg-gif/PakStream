@@ -160,17 +160,24 @@ class VideoProcessor {
     
     if (totalQualities === 0) {
       // If video is too small for any quality, create a single variant at original resolution
+      const originalQuality = { 
+        resolution: 'original', 
+        width: metadata.width, 
+        height: metadata.height, 
+        bitrate: '500k' 
+      };
       const variant = await this.generateHLSVariant(
         inputPath, 
         outputDir, 
         videoId, 
-        { resolution: 'original', width: metadata.width, height: metadata.height, bitrate: '500k' },
+        originalQuality,
         metadata,
         io,
         0,
         1
       );
       variants.push(variant);
+      console.log(`Created original quality variant: ${metadata.width}x${metadata.height}`);
       return variants;
     }
 
@@ -224,13 +231,17 @@ class VideoProcessor {
           '-hls_list_size 0',
           '-hls_segment_filename', segmentPattern,
           '-f hls',
-          '-preset ultrafast', // Much faster encoding
-          '-crf 28', // Higher CRF for faster encoding
+          '-preset medium', // Better quality/speed balance (was ultrafast)
+          '-crf 23', // Better quality (lower CRF = better quality, was 28)
           '-maxrate', quality.bitrate,
           '-bufsize', `${parseInt(quality.bitrate) * 2}k`,
           '-avoid_negative_ts make_zero',
           '-fflags +genpts',
-          '-threads 0' // Use all available CPU cores
+          '-threads 0', // Use all available CPU cores
+          '-profile:v main', // H.264 profile for better compatibility
+          '-movflags +faststart', // Enable fast start for better streaming
+          '-g 48', // GOP size (keyframe interval) for better seeking
+          '-sc_threshold 0' // Disable scene detection to prevent extra keyframes
         ])
         .output(playlistPath)
         .on('start', (commandLine) => {
@@ -253,6 +264,8 @@ class VideoProcessor {
             .then(segments => {
               resolve({
                 resolution: quality.resolution,
+                width: quality.width,
+                height: quality.height,
                 bitrate: parseInt(quality.bitrate),
                 playlist: `${videoId}_${quality.resolution}.m3u8`,
                 segments
@@ -307,11 +320,18 @@ class VideoProcessor {
     let playlistContent = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
     
     variants.forEach(variant => {
-      playlistContent += `#EXT-X-STREAM-INF:BANDWIDTH=${variant.bitrate * 1000},RESOLUTION=${variant.resolution}\n`;
+      // HLS spec requires RESOLUTION in WIDTHxHEIGHT format (e.g., 1280x720)
+      // NOT "720p" - this is critical for HLS.js to parse quality levels correctly
+      const resolution = variant.width && variant.height 
+        ? `${variant.width}x${variant.height}`
+        : variant.resolution;
+        
+      playlistContent += `#EXT-X-STREAM-INF:BANDWIDTH=${variant.bitrate * 1000},RESOLUTION=${resolution}\n`;
       playlistContent += `${variant.playlist}\n`;
     });
     
     await fs.writeFile(masterPlaylistPath, playlistContent);
+    console.log(`Master playlist created with ${variants.length} quality variants`);
     return `${videoId}_master.m3u8`;
   }
 }

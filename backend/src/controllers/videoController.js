@@ -1,5 +1,5 @@
 const Video = require('../models/Video');
-const VideoProcessor = require('../services/videoProcessor');
+const videoQueue = require('../services/videoQueue');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -32,13 +32,16 @@ const uploadVideo = async (req, res) => {
 
     await video.save();
 
-    // Start video processing in background
-    processVideoAsync(video._id, req.file.path);
+    // Add video to processing queue
+    videoQueue.addToQueue(video._id, req.file.path);
 
     res.status(201).json({
       success: true,
-      message: 'Video uploaded successfully. Processing started.',
-      data: { video }
+      message: 'Video uploaded successfully. Added to processing queue.',
+      data: { 
+        video,
+        queueStatus: videoQueue.getQueueStatus()
+      }
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -50,37 +53,21 @@ const uploadVideo = async (req, res) => {
   }
 };
 
-const processVideoAsync = async (videoId, inputPath) => {
+// Get queue status endpoint
+const getQueueStatus = async (req, res) => {
   try {
-    const video = await Video.findById(videoId);
-    if (!video) return;
-
-    video.status = 'processing';
-    await video.save();
-
-    const outputDir = path.join(__dirname, '../../uploads/videos/processed', videoId.toString());
+    const status = videoQueue.getQueueStatus();
     
-    const videoProcessor = new VideoProcessor();
-    const processedData = await videoProcessor.processVideo(videoId, inputPath, outputDir, global.io);
-    
-    video.status = 'ready';
-    video.duration = processedData.duration;
-    video.resolution = processedData.resolution;
-    video.fileSize = processedData.fileSize;
-    video.processedFiles = processedData.processedFiles;
-    
-    await video.save();
-    
-    console.log(`Video processing completed for ${videoId}`);
+    res.json({
+      success: true,
+      data: status
+    });
   } catch (error) {
-    console.error('Video processing error:', error);
-    
-    const video = await Video.findById(videoId);
-    if (video) {
-      video.status = 'error';
-      video.processingError = error.message;
-      await video.save();
-    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get queue status',
+      error: error.message
+    });
   }
 };
 
@@ -127,6 +114,56 @@ const getVideos = async (req, res) => {
   }
 };
 
+const getFeaturedVideos = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Get featured videos that are ready for playback
+    const videos = await Video.find({
+      isPublic: true,
+      isFeatured: true,
+      status: 'ready'
+    })
+      .populate('uploadedBy', 'username email')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    // If no featured videos, return latest ready videos
+    if (videos.length === 0) {
+      const latestVideos = await Video.find({
+        isPublic: true,
+        status: 'ready'
+      })
+        .populate('uploadedBy', 'username email')
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit));
+
+      return res.json({
+        success: true,
+        data: {
+          videos: latestVideos,
+          isFallback: true,
+          message: 'No featured videos available, showing latest videos'
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        videos,
+        isFallback: false
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch featured videos',
+      error: error.message
+    });
+  }
+};
+
 const getVideoById = async (req, res) => {
   try {
     const video = await Video.findById(req.params.id)
@@ -139,9 +176,13 @@ const getVideoById = async (req, res) => {
       });
     }
 
-    // Increment view count
-    video.views += 1;
-    await video.save();
+    // Increment view count asynchronously without blocking response
+    // This prevents the view counter from slowing down video playback start
+    Video.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: false }
+    ).catch(err => console.error('Failed to update view count:', err));
 
     res.json({
       success: true,
@@ -314,9 +355,11 @@ const getVideoStatus = async (req, res) => {
 module.exports = {
   uploadVideo,
   getVideos,
+  getFeaturedVideos,
   getVideoById,
   getUserVideos,
   updateVideo,
   deleteVideo,
-  getVideoStatus
+  getVideoStatus,
+  getQueueStatus
 };

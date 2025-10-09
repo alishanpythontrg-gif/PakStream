@@ -24,9 +24,22 @@ class SocketHandler {
       // Join premiere room
       socket.on('join-premiere', async (premiereId) => {
         try {
-          const premiere = await Premiere.findById(premiereId).populate('video');
+          const premiere = await Premiere.findById(premiereId)
+            .populate({
+              path: 'video',
+              select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+            })
+            .populate('createdBy', 'username');
+          
           if (!premiere) {
             socket.emit('error', { message: 'Premiere not found' });
+            return;
+          }
+          
+          // Validate that video has required data for playback
+          if (!premiere.video || !premiere.video.processedFiles || !premiere.video.processedFiles.hls) {
+            console.error('Premiere video missing processedFiles:', premiereId);
+            socket.emit('error', { message: 'Premiere video is not ready for playback' });
             return;
           }
 
@@ -111,10 +124,22 @@ class SocketHandler {
               isActive: true
             },
             { new: true }
-          ).populate('video');
+          )
+          .populate({
+            path: 'video',
+            select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+          })
+          .populate('createdBy', 'username');
 
           if (!premiere) {
             socket.emit('error', { message: 'Premiere not found' });
+            return;
+          }
+          
+          // Validate video data before starting
+          if (!premiere.video || !premiere.video.processedFiles || !premiere.video.processedFiles.hls) {
+            console.error('Cannot start premiere - video not ready:', premiereId);
+            socket.emit('error', { message: 'Cannot start premiere - video is not ready for playback' });
             return;
           }
 
@@ -150,7 +175,12 @@ class SocketHandler {
               isActive: false
             },
             { new: true }
-          ).populate('video');
+          )
+          .populate({
+            path: 'video',
+            select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+          })
+          .populate('createdBy', 'username');
 
           if (!premiere) {
             socket.emit('error', { message: 'Premiere not found' });

@@ -35,24 +35,19 @@ const HeroSection: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      // Get the latest video (sorted by creation date, descending)
-      const response = await videoService.getVideos({
-        page: 1,
-        limit: 1,
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
-      });
+      // Get the featured video first, fallback to latest if none available
+      const response = await videoService.getFeaturedVideos(1);
 
       if (response.data.videos.length > 0) {
         const video = response.data.videos[0];
         setLatestVideo(video);
-        console.log('Latest video loaded:', video.title);
+        console.log('Featured video loaded:', video.title);
       } else {
         setError('No videos available');
       }
     } catch (error) {
-      console.error('Failed to fetch latest video:', error);
-      setError('Failed to load latest video');
+      console.error('Failed to fetch featured video:', error);
+      setError('Failed to load featured video');
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +197,7 @@ const HeroSection: React.FC = () => {
         <div className="relative z-10 flex items-center justify-center h-full">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-xl text-white">Loading latest video...</p>
+            <p className="text-xl text-white">Loading featured video...</p>
           </div>
         </div>
       </section>

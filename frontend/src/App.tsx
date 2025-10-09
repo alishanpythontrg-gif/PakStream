@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import VideoGrid from './components/video/VideoGrid';
 import VideoPlayer from './components/video/VideoPlayer';
+import VideoProcessingStatus from './components/video/VideoProcessingStatus';
 import AdminVideoDashboard from './components/video/AdminVideoDashboard';
 import AdminPremiereDashboard from './components/premiere/AdminPremiereDashboard';
 import PresentationGrid from './components/presentation/PresentationGrid';
@@ -14,6 +15,7 @@ import ScheduledPremiere from './components/premiere/ScheduledPremiere';
 import videoService from './services/videoService';
 import presentationService from './services/presentationService';
 import premiereService from './services/premiereService';
+import socketService from './services/socketService';
 import { Video } from './types/video';
 import { Presentation } from './types/presentation';
 import { Premiere } from './types/premiere';
@@ -32,12 +34,20 @@ const AppContent: React.FC = () => {
   const [showPremiere, setShowPremiere] = useState(false);
 
   useEffect(() => {
-    console.log('App mounted, checking for active premiere...');
+    console.log('App mounted, initializing socket and checking for active premiere...');
+    
+    // Initialize socket connection once for the entire app
+    socketService.connect();
+    
     initializeApp();
     
     // Check for active premiere every 10 seconds
     const interval = setInterval(checkActivePremiere, 10000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      // Don't disconnect socket here - keep it alive for the entire app lifetime
+    };
   }, []);
 
   const initializeApp = async () => {
@@ -224,6 +234,15 @@ const AppContent: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Video Processing Status - Global */}
+      <VideoProcessingStatus 
+        onVideoReady={(videoId) => {
+          console.log('Video ready:', videoId);
+          // Refresh videos when processing completes
+          fetchVideos();
+        }}
+      />
     </div>
   );
 };

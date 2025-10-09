@@ -6,26 +6,42 @@ class SocketService {
 
   connect() {
     if (this.socket?.connected) {
+      console.log('Socket already connected, reusing existing connection');
       return this.socket;
     }
 
+    if (this.socket && !this.socket.connected) {
+      console.log('Socket exists but disconnected, reconnecting...');
+      this.socket.connect();
+      return this.socket;
+    }
+
+    console.log('Creating new Socket.IO connection...');
     this.socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],
       autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to Socket.IO server');
+      console.log('✅ Connected to Socket.IO server, ID:', this.socket?.id);
       this.isConnected = true;
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from Socket.IO server');
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from Socket.IO server. Reason:', reason);
       this.isConnected = false;
     });
 
     this.socket.on('error', (error) => {
       console.error('Socket.IO error:', error);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
     });
 
     return this.socket;
@@ -66,18 +82,45 @@ class SocketService {
   }
 
   // Premiere-related methods
+  private activeRooms: Set<string> = new Set();
+  private joinTimestamps: Map<string, number> = new Map();
+  
   joinPremiere(premiereId: string) {
     const socket = this.getSocket();
-    if (socket) {
-      socket.emit('join-premiere', premiereId);
+    if (!socket) return;
+    
+    // Prevent duplicate joins within 2 seconds (debounce)
+    const now = Date.now();
+    const lastJoin = this.joinTimestamps.get(premiereId);
+    if (lastJoin && (now - lastJoin) < 2000) {
+      console.log('⚠️ Blocked duplicate join attempt for:', premiereId);
+      return;
     }
+    
+    if (this.activeRooms.has(premiereId)) {
+      console.log('⚠️ Already in premiere room:', premiereId);
+      return;
+    }
+    
+    console.log('✅ Joining premiere room:', premiereId);
+    socket.emit('join-premiere', premiereId);
+    this.activeRooms.add(premiereId);
+    this.joinTimestamps.set(premiereId, now);
   }
 
   leavePremiere(premiereId: string) {
     const socket = this.getSocket();
-    if (socket) {
-      socket.emit('leave-premiere', premiereId);
+    if (!socket) return;
+    
+    if (!this.activeRooms.has(premiereId)) {
+      console.log('⚠️ Not in premiere room:', premiereId);
+      return;
     }
+    
+    console.log('🚪 Leaving premiere room:', premiereId);
+    socket.emit('leave-premiere', premiereId);
+    this.activeRooms.delete(premiereId);
+    this.joinTimestamps.delete(premiereId);
   }
 
   // Admin controls

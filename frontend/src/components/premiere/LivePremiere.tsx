@@ -21,63 +21,86 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
   const [viewerCount, setViewerCount] = useState(premiere.totalViewers);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<VideoPlayerRef>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const hasJoinedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent duplicate joins
+    if (hasJoinedRef.current) {
+      console.log('Already joined premiere, skipping');
+      return;
+    }
+    
+    console.log('LivePremiere: Connecting to premiere room:', premiere._id);
+    hasJoinedRef.current = true;
+    
     // Join the premiere room
     socketService.joinPremiere(premiere._id);
 
     // Set up socket event listeners
-    socketService.onPremiereJoined((data) => {
+    const handlePremiereJoined = (data: any) => {
       console.log('Premiere joined:', data);
       setViewerCount(data.viewerCount);
       setChatMessages(data.chat || []);
-    });
+    };
 
-    socketService.onViewerJoined((data) => {
+    const handleViewerJoined = (data: any) => {
       setViewerCount(data.viewerCount);
-    });
+    };
 
-    socketService.onViewerLeft((data) => {
+    const handleViewerLeft = (data: any) => {
       setViewerCount(data.viewerCount);
-    });
+    };
 
-    socketService.onPremiereStarted((data) => {
+    const handlePremiereStarted = (data: any) => {
       console.log('Premiere started:', data);
-    });
+    };
 
-    socketService.onPremiereEnded((data) => {
+    const handlePremiereEnded = (data: any) => {
       console.log('Premiere ended:', data);
       if (onClose) onClose();
-    });
+    };
 
-    socketService.onVideoPlay(() => {
+    const handleVideoPlay = () => {
       if (videoRef.current) {
         videoRef.current.play();
       }
-    });
+    };
 
-    socketService.onVideoPause(() => {
+    const handleVideoPause = () => {
       if (videoRef.current) {
         videoRef.current.pause();
       }
-    });
+    };
 
-    socketService.onVideoSeek((data) => {
+    const handleVideoSeek = (data: { time: number }) => {
       if (videoRef.current) {
         videoRef.current.seek(data.time);
       }
-    });
+    };
 
-    socketService.onNewMessage((message) => {
+    const handleNewMessage = (message: any) => {
       setChatMessages(prev => [...prev, message]);
       scrollToBottom();
-    });
+    };
 
-    socketService.onError((error) => {
+    const handleError = (error: any) => {
       console.error('Socket error:', error);
-    });
+    };
+
+    // Register all event listeners
+    socketService.onPremiereJoined(handlePremiereJoined);
+    socketService.onViewerJoined(handleViewerJoined);
+    socketService.onViewerLeft(handleViewerLeft);
+    socketService.onPremiereStarted(handlePremiereStarted);
+    socketService.onPremiereEnded(handlePremiereEnded);
+    socketService.onVideoPlay(handleVideoPlay);
+    socketService.onVideoPause(handleVideoPause);
+    socketService.onVideoSeek(handleVideoSeek);
+    socketService.onNewMessage(handleNewMessage);
+    socketService.onError(handleError);
 
     // Update time remaining
     const updateTimeRemaining = () => {
@@ -89,11 +112,27 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     const interval = setInterval(updateTimeRemaining, 1000);
 
     return () => {
+      console.log('LivePremiere: Cleaning up and leaving premiere room:', premiere._id);
       clearInterval(interval);
-      socketService.leavePremiere(premiere._id);
-      socketService.removeAllListeners();
+      
+      if (hasJoinedRef.current) {
+        socketService.leavePremiere(premiere._id);
+        hasJoinedRef.current = false;
+      }
+      
+      // Remove specific listeners
+      socketService.removeListener('premiere-joined', handlePremiereJoined);
+      socketService.removeListener('viewer-joined', handleViewerJoined);
+      socketService.removeListener('viewer-left', handleViewerLeft);
+      socketService.removeListener('premiere-started', handlePremiereStarted);
+      socketService.removeListener('premiere-ended', handlePremiereEnded);
+      socketService.removeListener('video-play', handleVideoPlay);
+      socketService.removeListener('video-pause', handleVideoPause);
+      socketService.removeListener('video-seek', handleVideoSeek);
+      socketService.removeListener('new-message', handleNewMessage);
+      socketService.removeListener('error', handleError);
     };
-  }, [premiere, onClose]);
+  }, []);
 
   const scrollToBottom = () => {
     if (chatContainerRef.current) {
@@ -134,27 +173,60 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     socketService.seekVideo(premiere._id, time);
   };
 
+  // Validate premiere video data before rendering player (run only once on mount)
+  useEffect(() => {
+    if (!premiere.video) {
+      setVideoError('Video data is missing from this premiere');
+      return;
+    }
+    
+    if (!premiere.video.processedFiles) {
+      setVideoError('Video has not been processed yet');
+      return;
+    }
+    
+    if (!premiere.video.processedFiles.hls) {
+      setVideoError('Video streaming files are not available');
+      return;
+    }
+    
+    if (!premiere.video.processedFiles.hls.masterPlaylist) {
+      setVideoError('Video master playlist is missing');
+      return;
+    }
+    
+    if (!premiere.video.processedFiles.hls.variants || premiere.video.processedFiles.hls.variants.length === 0) {
+      setVideoError('No video quality variants available');
+      return;
+    }
+    
+    // Clear error if all validations pass
+    setVideoError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
   // Convert premiere video to Video type for VideoPlayer
-  const videoForPlayer: Video = {
-    _id: premiere.video?._id,
-    title: premiere.video?.title,
-    description: premiere.video?.description,
-    duration: premiere.video?.duration,
-    resolution: premiere.video?.resolution,
+  // Only create this if validation passed
+  const videoForPlayer: Video | null = videoError ? null : {
+    _id: premiere.video._id,
+    title: premiere.video.title,
+    description: premiere.video.description,
+    duration: premiere.video.duration,
+    resolution: premiere.video.resolution,
     fileSize: 0,
     uploadedBy: {
       _id: premiere.createdBy._id,
       username: premiere.createdBy.username,
-      email: 'premiere@pakstream.com'
+      email: premiere.video.uploadedBy?.email || 'premiere@pakstream.com'
     },
     originalFile: {
-      filename: '',
-      path: '',
-      size: 0,
-      mimetype: 'video/mp4',
-      duration: premiere.video?.duration
+      filename: premiere.video.originalFile?.filename || '',
+      path: premiere.video.originalFile?.path || '',
+      size: premiere.video.originalFile?.size || 0,
+      mimetype: premiere.video.originalFile?.mimetype || 'video/mp4',
+      duration: premiere.video.duration
     },
-    status: 'ready',
+    status: (premiere.video.status as 'ready' | 'processing' | 'uploading' | 'failed' | 'error') || 'ready',
     processingProgress: 100,
     views: 0,
     likes: 0,
@@ -167,17 +239,17 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     updatedAt: premiere.updatedAt,
     processedFiles: {
       hls: {
-        masterPlaylist: premiere.video?.processedFiles.hls.masterPlaylist,
-        segments: [],
-        variants: premiere.video?.processedFiles.hls.variants.map(v => ({
+        masterPlaylist: premiere.video.processedFiles.hls.masterPlaylist,
+        segments: premiere.video.processedFiles.hls.segments || [],
+        variants: premiere.video.processedFiles.hls.variants.map(v => ({
           resolution: v.resolution,
           bitrate: v.bitrate,
           playlist: v.playlist,
-          segments: v.segments
+          segments: v.segments || []
         })) as VideoVariant[]
       },
-      thumbnails: premiere.video?.processedFiles.thumbnails,
-      poster: premiere.video?.processedFiles.poster
+      thumbnails: premiere.video.processedFiles.thumbnails || [],
+      poster: premiere.video.processedFiles.poster || ''
     }
   };
 
@@ -227,18 +299,41 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
           </div>
         </div>
 
-        {/* Video Player */}
+        {/* Video Player or Error Message */}
         <div className="flex-1 pt-4">
-          <VideoPlayer
-            video={videoForPlayer}
-            autoPlay={true}
-            controls={true}
-            className="h-full"
-            onPlay={handleVideoPlay}
-            onPause={handleVideoPause}
-            onSeek={handleVideoSeek}
-            ref={videoRef}
-          />
+          {videoError ? (
+            <div className="h-full flex items-center justify-center bg-gray-900">
+              <div className="text-center p-8">
+                <div className="text-6xl mb-4">⚠️</div>
+                <h3 className="text-2xl font-bold text-red-500 mb-4">Video Playback Error</h3>
+                <p className="text-white text-lg mb-2">{videoError}</p>
+                <p className="text-gray-400 text-sm">
+                  Please contact the premiere administrator or try refreshing the page.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-6 px-6 py-3 bg-netflix-red hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Refresh Page
+                </button>
+              </div>
+            </div>
+          ) : videoForPlayer ? (
+            <VideoPlayer
+              video={videoForPlayer}
+              autoPlay={true}
+              controls={true}
+              className="h-full"
+              onPlay={handleVideoPlay}
+              onPause={handleVideoPause}
+              onSeek={handleVideoSeek}
+              ref={videoRef}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center bg-gray-900">
+              <div className="text-white text-xl">Loading video...</div>
+            </div>
+          )}
         </div>
 
         {/* Premiere Info Overlay */}

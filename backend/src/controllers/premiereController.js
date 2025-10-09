@@ -42,7 +42,10 @@ const createPremiere = async (req, res) => {
     });
 
     await premiere.save();
-    await premiere.populate('video');
+    await premiere.populate({
+      path: 'video',
+      select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+    });
 
     res.status(201).json({
       success: true,
@@ -64,7 +67,12 @@ const getActivePremiere = async (req, res) => {
     const premiere = await Premiere.findOne({ 
       status: { $in: ['scheduled', 'live'] },
       isActive: true
-    }).populate('video').populate('createdBy', 'username');
+    })
+    .populate({
+      path: 'video',
+      select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+    })
+    .populate('createdBy', 'username');
 
     if (!premiere) {
       return res.json({
@@ -103,7 +111,10 @@ const getAllPremieres = async (req, res) => {
     if (status) query.status = status;
 
     const premieres = await Premiere.find(query)
-      .populate('video')
+      .populate({
+        path: 'video',
+        select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+      })
       .populate('createdBy', 'username')
       .sort({ createdAt: -1 })
       .skip(skip)

@@ -70,6 +70,13 @@ class VideoService {
     return this.request<VideosResponse>(endpoint);
   }
 
+  async getFeaturedVideos(limit: number = 1): Promise<VideosResponse> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('limit', limit.toString());
+    
+    return this.request<VideosResponse>(`/videos/featured/list?${queryParams.toString()}`);
+  }
+
   async getVideo(id: string): Promise<VideoResponse> {
     return this.request<VideoResponse>(`/videos/${id}`);
   }

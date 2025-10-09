@@ -6,9 +6,23 @@ export interface Premiere {
     description: string;
     duration: number;
     resolution: string;
+    status?: string;
+    uploadedBy?: {
+      _id: string;
+      username: string;
+      email: string;
+    };
+    originalFile?: {
+      filename: string;
+      path: string;
+      size: number;
+      mimetype: string;
+      duration?: number;
+    };
     processedFiles: {
       hls: {
         masterPlaylist: string;
+        segments?: string[];
         variants: Array<{
           resolution: string;
           bitrate: number;

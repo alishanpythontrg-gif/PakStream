@@ -47,7 +47,19 @@ const AdminPremiereDashboard: React.FC = () => {
       console.log('Testing video service...');
       const videosRes = await videoService.getVideos({ limit: 50 });
       console.log('Videos response:', videosRes);
-      setVideos(videosRes.data.videos);
+      
+      // Filter videos to only include those that are ready and have HLS files
+      const readyVideos = videosRes.data.videos.filter(video => 
+        video.status === 'ready' && 
+        video.processedFiles && 
+        video.processedFiles.hls && 
+        video.processedFiles.hls.masterPlaylist &&
+        video.processedFiles.hls.variants &&
+        video.processedFiles.hls.variants.length > 0
+      );
+      
+      console.log(`Filtered ${readyVideos.length} ready videos out of ${videosRes.data.videos.length} total`);
+      setVideos(readyVideos);
       
       // Test premiere service
       console.log('Testing premiere service...');
@@ -410,8 +422,15 @@ const CreatePremiereModal: React.FC<CreatePremiereModalProps> = ({
               ))}
             </select>
             <div className="mt-1 text-sm text-gray-400">
-              {videos.length} videos available
+              {videos.length} ready videos available (showing only fully processed videos)
             </div>
+            {videos.length === 0 && (
+              <div className="mt-2 p-3 bg-yellow-900/30 border border-yellow-500 rounded-lg">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ No videos are currently ready for premiere. Please upload and process videos first.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Title */}
