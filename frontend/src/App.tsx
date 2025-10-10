@@ -92,12 +92,18 @@ const AppContent: React.FC = () => {
       if (response.data.premiere) {
         console.log('Found active premiere:', response.data.premiere);
         
-        // Only update if premiere ID changed (prevent unnecessary re-renders)
+        // Only update if premiere ID or STATUS changed (prevent unnecessary re-renders)
         setActivePremiere(prev => {
           if (prev && prev._id === response.data.premiere._id) {
-            console.log('Same premiere, skipping update');
+            // Check if status changed (scheduled -> live)
+            if (prev.status !== response.data.premiere.status) {
+              console.log(`Premiere status changed from ${prev.status} to ${response.data.premiere.status}`);
+              return response.data.premiere; // Status changed, update
+            }
+            console.log('Same premiere and status, skipping update');
             return prev; // Keep same reference
           }
+          console.log('New premiere detected');
           return response.data.premiere; // New premiere
         });
         setShowPremiere(true);
@@ -166,6 +172,7 @@ const AppContent: React.FC = () => {
               <ScheduledPremiere 
                 premiere={activePremiere} 
                 onClose={handleClosePremiere}
+                onCountdownFinish={checkActivePremiere}
               />
             ) : null}
           </div>

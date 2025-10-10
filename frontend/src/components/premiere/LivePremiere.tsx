@@ -22,9 +22,11 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<VideoPlayerRef>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const hasJoinedRef = useRef(false);
+  const autoPlayAttemptedRef = useRef(false);
 
   useEffect(() => {
     // Prevent duplicate joins
@@ -202,8 +204,27 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
     
     // Clear error if all validations pass
     setVideoError(null);
+    setIsVideoReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
+
+  // Auto-play video when ready (triggered after countdown or when premiere starts)
+  useEffect(() => {
+    if (isVideoReady && videoRef.current && !autoPlayAttemptedRef.current) {
+      autoPlayAttemptedRef.current = true;
+      
+      // Small delay to ensure video player is fully initialized
+      const autoPlayTimer = setTimeout(() => {
+        console.log('Auto-playing premiere video...');
+        videoRef.current?.play();
+        
+        // Notify other viewers via socket
+        socketService.playVideo(premiere._id);
+      }, 500);
+
+      return () => clearTimeout(autoPlayTimer);
+    }
+  }, [isVideoReady, premiere._id]);
 
   // Convert premiere video to Video type for VideoPlayer
   // Only create this if validation passed

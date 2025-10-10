@@ -5,22 +5,57 @@ import premiereService from '../../services/premiereService';
 interface ScheduledPremiereProps {
   premiere: Premiere;
   onClose?: () => void;
+  onCountdownFinish?: () => void;
 }
 
-const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose }) => {
+const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose, onCountdownFinish }) => {
   const [timeUntilStart, setTimeUntilStart] = useState(0);
+  const hasFinishedRef = React.useRef(false);
+  const recheckIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const updateTimeUntilStart = () => {
       const remaining = premiereService.getTimeUntilStart(premiere.startTime);
       setTimeUntilStart(remaining);
+      
+      // When countdown reaches 0, trigger callback to check if premiere is live
+      if (remaining <= 0 && !hasFinishedRef.current) {
+        hasFinishedRef.current = true;
+        console.log('🎬 Countdown finished! Checking if premiere is live...');
+        
+        // Immediately trigger parent to re-check premiere status
+        // The backend will auto-update status from 'scheduled' to 'live'
+        if (onCountdownFinish) {
+          onCountdownFinish();
+          
+          // Keep checking every 3 seconds for up to 9 seconds
+          // in case there's a delay in status update
+          let attempts = 0;
+          recheckIntervalRef.current = setInterval(() => {
+            attempts++;
+            console.log(`🔄 Re-checking premiere status (attempt ${attempts}/3)...`);
+            onCountdownFinish();
+            
+            if (attempts >= 3 && recheckIntervalRef.current) {
+              clearInterval(recheckIntervalRef.current);
+              recheckIntervalRef.current = null;
+              console.log('✅ Finished re-checking premiere status');
+            }
+          }, 3000);
+        }
+      }
     };
 
     updateTimeUntilStart();
     const interval = setInterval(updateTimeUntilStart, 1000);
 
-    return () => clearInterval(interval);
-  }, [premiere.startTime]);
+    return () => {
+      clearInterval(interval);
+      if (recheckIntervalRef.current) {
+        clearInterval(recheckIntervalRef.current);
+      }
+    };
+  }, [premiere.startTime, onCountdownFinish]);
 
   const formatTimeUntilStart = (milliseconds: number) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -111,12 +146,23 @@ const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-yellow-900/30 to-yellow-700/30 border border-yellow-500 rounded-lg p-4">
+              <div className={`${timeUntilStart <= 0 ? 'bg-gradient-to-r from-green-900/30 to-green-700/30 border border-green-500' : 'bg-gradient-to-r from-yellow-900/30 to-yellow-700/30 border border-yellow-500'} rounded-lg p-4 transition-all duration-500`}>
                 <div className="text-center">
-                  <h3 className="text-xl font-bold text-yellow-400 mb-2">Premiere Starts In</h3>
-                  <div className="text-3xl font-mono text-white">
-                    {formatTimeUntilStart(timeUntilStart)}
-                  </div>
+                  {timeUntilStart <= 0 ? (
+                    <>
+                      <h3 className="text-xl font-bold text-green-400 mb-2 animate-pulse">🎬 Starting Premiere...</h3>
+                      <div className="text-lg text-white">
+                        Please wait, loading video player...
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-bold text-yellow-400 mb-2">Premiere Starts In</h3>
+                      <div className="text-3xl font-mono text-white">
+                        {formatTimeUntilStart(timeUntilStart)}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
