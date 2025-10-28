@@ -11,6 +11,7 @@ import PresentationGrid from './components/presentation/PresentationGrid';
 import PresentationViewer from './components/presentation/PresentationViewer';
 import AdminPresentationDashboard from './components/presentation/AdminPresentationDashboard';
 import AdminUserManagement from './components/admin/AdminUserManagement';
+import EdgeServerManagement from './components/admin/EdgeServerManagement';
 import LivePremiere from './components/premiere/LivePremiere';
 import ScheduledPremiere from './components/premiere/ScheduledPremiere';
 import videoService from './services/videoService';
@@ -240,7 +241,10 @@ const AppContent: React.FC = () => {
         {/* Admin Dashboard */}
         {user?.role === 'admin' && (
           <div className="container mx-auto px-6 py-8">
-            <div id="admin-users">
+            <div id="admin-edge-servers">
+              <EdgeServerManagement />
+            </div>
+            <div id="admin-users" className="mt-16">
               <AdminUserManagement />
             </div>
             <div id="admin-videos" className="mt-16">

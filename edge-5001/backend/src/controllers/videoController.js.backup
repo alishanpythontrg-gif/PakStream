@@ -1,6 +1,5 @@
 const Video = require('../models/Video');
-const videoQueue = require('../services/videoQueue');
-const { addCdnUrlsToVideos, addCdnUrlsToVideo } = require('../utils/cdnUtils');
+const videoProcessor = require('../services/videoProcessor');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -33,16 +32,13 @@ const uploadVideo = async (req, res) => {
 
     await video.save();
 
-    // Add video to processing queue
-    videoQueue.addToQueue(video._id, req.file.path);
+    // Start video processing in background
+    processVideoAsync(video._id, req.file.path);
 
     res.status(201).json({
       success: true,
-      message: 'Video uploaded successfully. Added to processing queue.',
-      data: { 
-        video,
-        queueStatus: videoQueue.getQueueStatus()
-      }
+      message: 'Video uploaded successfully. Processing started.',
+      data: { video }
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -54,21 +50,36 @@ const uploadVideo = async (req, res) => {
   }
 };
 
-// Get queue status endpoint
-const getQueueStatus = async (req, res) => {
+const processVideoAsync = async (videoId, inputPath) => {
   try {
-    const status = videoQueue.getQueueStatus();
+    const video = await Video.findById(videoId);
+    if (!video) return;
+
+    video.status = 'processing';
+    await video.save();
+
+    const outputDir = path.join(__dirname, '../../uploads/videos/processed', videoId.toString());
     
-    res.json({
-      success: true,
-      data: status
-    });
+    const processedData = await videoProcessor.processVideo(videoId, inputPath, outputDir);
+    
+    video.status = 'ready';
+    video.duration = processedData.duration;
+    video.resolution = processedData.resolution;
+    video.fileSize = processedData.fileSize;
+    video.processedFiles = processedData.processedFiles;
+    
+    await video.save();
+    
+    console.log(`Video processing completed for ${videoId}`);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get queue status',
-      error: error.message
-    });
+    console.error('Video processing error:', error);
+    
+    const video = await Video.findById(videoId);
+    if (video) {
+      video.status = 'error';
+      video.processingError = error.message;
+      await video.save();
+    }
   }
 };
 
@@ -95,13 +106,10 @@ const getVideos = async (req, res) => {
 
     const total = await Video.countDocuments(query);
 
-    // Add CDN URLs to videos
-    const videosWithCdn = addCdnUrlsToVideos(videos);
-
     res.json({
       success: true,
       data: {
-        videos: videosWithCdn,
+        videos,
         pagination: {
           current: parseInt(page),
           pages: Math.ceil(total / limit),
@@ -113,56 +121,6 @@ const getVideos = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch videos',
-      error: error.message
-    });
-  }
-};
-
-const getFeaturedVideos = async (req, res) => {
-  try {
-    const { limit = 10 } = req.query;
-
-    // Get featured videos that are ready for playback
-    const videos = await Video.find({
-      isPublic: true,
-      isFeatured: true,
-      status: 'ready'
-    })
-      .populate('uploadedBy', 'username email')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
-
-    // If no featured videos, return latest ready videos
-    if (videos.length === 0) {
-      const latestVideos = await Video.find({
-        isPublic: true,
-        status: 'ready'
-      })
-        .populate('uploadedBy', 'username email')
-        .sort({ createdAt: -1 })
-        .limit(parseInt(limit));
-
-      return res.json({
-        success: true,
-        data: {
-          videos: latestVideos,
-          isFallback: true,
-          message: 'No featured videos available, showing latest videos'
-        }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        videos,
-        isFallback: false
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch featured videos',
       error: error.message
     });
   }
@@ -180,13 +138,9 @@ const getVideoById = async (req, res) => {
       });
     }
 
-    // Increment view count asynchronously without blocking response
-    // This prevents the view counter from slowing down video playback start
-    Video.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: false }
-    ).catch(err => console.error('Failed to update view count:', err));
+    // Increment view count
+    video.views += 1;
+    await video.save();
 
     res.json({
       success: true,
@@ -320,6 +274,51 @@ const deleteVideo = async (req, res) => {
       message: 'Video deleted successfully by administrator'
     });
   } catch (error) {
+    console.error('Delete video error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete video',
+      error: error.message
+    });
+  }
+};
+      try {
+        await fs.rmdir(processedDir, { recursive: true });
+        console.log(`Deleted processed directory: ${processedDir}`);
+      } catch (dirError) {
+        console.log(`Processed directory not found or already deleted: ${processedDir}`);
+      }
+    } catch (fileError) {
+      console.error('Error deleting files:', fileError);
+      // Continue with database deletion even if file deletion fails
+    }
+
+    await Video.findByIdAndDelete(req.params.id);
+    console.log('Video deleted from database successfully');
+
+    res.json({
+      success: true,
+      message: 'Video deleted successfully by administrator'
+    });
+  } catch (error) {
+    console.error('Delete video error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete video',
+      error: error.message
+    });
+  }
+};
+      error: error.message
+    });
+  }
+};
+      message: 'Failed to delete video',
+      error: error.message
+    });
+  }
+};
+  } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to delete video',
@@ -359,11 +358,9 @@ const getVideoStatus = async (req, res) => {
 module.exports = {
   uploadVideo,
   getVideos,
-  getFeaturedVideos,
   getVideoById,
   getUserVideos,
   updateVideo,
   deleteVideo,
-  getVideoStatus,
-  getQueueStatus
+  getVideoStatus
 };
