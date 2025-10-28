@@ -4,10 +4,9 @@ import { useAuth } from '../../hooks';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSwitchToRegister: () => void;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegister }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -88,17 +87,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-400">
-            Don't have an account?{' '}
-            <button
-              onClick={onSwitchToRegister}
-              className="text-netflix-red hover:underline"
-            >
-              Sign up
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );

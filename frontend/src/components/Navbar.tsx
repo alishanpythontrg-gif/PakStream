@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks';
 import LoginModal from './auth/LoginModal';
-import RegisterModal from './auth/RegisterModal';
-import AdminRegisterModal from './auth/AdminRegisterModal';
 import UserProfile from './auth/UserProfile';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showAdminRegisterModal, setShowAdminRegisterModal] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
   const handleLogout = () => {
@@ -110,21 +106,9 @@ const Navbar: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={() => setShowLoginModal(true)}
-                    className="text-white hover:text-gray-300 transition-colors"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => setShowRegisterModal(true)}
                     className="btn-primary"
                   >
-                    Sign Up
-                  </button>
-                  <button
-                    onClick={() => setShowAdminRegisterModal(true)}
-                    className="btn-secondary text-sm"
-                  >
-                    Admin Sign Up
+                    Sign In
                   </button>
                 </div>
               )}
@@ -137,36 +121,6 @@ const Navbar: React.FC = () => {
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        onSwitchToRegister={() => {
-          setShowLoginModal(false);
-          setShowRegisterModal(true);
-        }}
-      />
-
-      <RegisterModal
-        isOpen={showRegisterModal}
-        onClose={() => setShowRegisterModal(false)}
-        onSwitchToLogin={() => {
-          setShowRegisterModal(false);
-          setShowLoginModal(true);
-        }}
-        onSwitchToAdminRegister={() => {
-          setShowRegisterModal(false);
-          setShowAdminRegisterModal(true);
-        }}
-      />
-
-      <AdminRegisterModal
-        isOpen={showAdminRegisterModal}
-        onClose={() => setShowAdminRegisterModal(false)}
-        onSwitchToLogin={() => {
-          setShowAdminRegisterModal(false);
-          setShowLoginModal(true);
-        }}
-        onSwitchToRegister={() => {
-          setShowAdminRegisterModal(false);
-          setShowRegisterModal(true);
-        }}
       />
     </>
   );

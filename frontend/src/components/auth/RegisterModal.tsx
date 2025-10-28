@@ -5,14 +5,12 @@ interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
-  onSwitchToAdminRegister: () => void;
 }
 
 const RegisterModal: React.FC<RegisterModalProps> = ({ 
   isOpen, 
   onClose, 
-  onSwitchToLogin, 
-  onSwitchToAdminRegister 
+  onSwitchToLogin
 }) => {
   const { register } = useAuth();
   const [formData, setFormData] = useState({
@@ -132,7 +130,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
           </button>
         </form>
 
-        <div className="mt-6 text-center space-y-2">
+        <div className="mt-6 text-center">
           <p className="text-gray-400">
             Already have an account?{' '}
             <button
@@ -140,15 +138,6 @@ const RegisterModal: React.FC<RegisterModalProps> = ({
               className="text-netflix-red hover:underline"
             >
               Sign in
-            </button>
-          </p>
-          <p className="text-gray-400">
-            Admin?{' '}
-            <button
-              onClick={onSwitchToAdminRegister}
-              className="text-netflix-red hover:underline"
-            >
-              Admin Sign Up
             </button>
           </p>
         </div>
