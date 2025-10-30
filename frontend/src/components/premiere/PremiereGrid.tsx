@@ -58,11 +58,11 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-netflix-gray rounded-lg overflow-hidden animate-pulse">
-            <div className="aspect-video bg-gray-700"></div>
+          <div key={i} className="bg-card rounded-lg overflow-hidden animate-pulse">
+            <div className="aspect-video bg-secondary"></div>
             <div className="p-4 space-y-3">
-              <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+              <div className="h-4 bg-secondary rounded w-3/4"></div>
+              <div className="h-3 bg-secondary rounded w-1/2"></div>
             </div>
           </div>
         ))}
@@ -74,8 +74,8 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">🎬</div>
-        <p className="text-gray-400 text-lg mb-2">No upcoming premieres scheduled</p>
-        <p className="text-gray-500 text-sm">Check back later for exciting new content!</p>
+        <p className="text-text-secondary text-lg mb-2">No upcoming premieres scheduled</p>
+        <p className="text-text-secondary opacity-70 text-sm">Check back later for exciting new content!</p>
       </div>
     );
   }
@@ -85,10 +85,10 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
       {premieres.map((premiere) => (
         <div
           key={premiere._id}
-          className="group bg-netflix-gray rounded-lg overflow-hidden hover:scale-105 transition-transform duration-300 cursor-pointer"
+          className="group bg-card rounded-lg overflow-hidden hover:scale-105 hover:bg-card-hover transition-all duration-300 cursor-pointer"
         >
           {/* Poster Image */}
-          <div className="relative aspect-video bg-gray-800 overflow-hidden">
+          <div className="relative aspect-video bg-secondary overflow-hidden">
             {premiere.video?.processedFiles?.poster ? (
               <img
                 src={getPremierePosterUrl(premiere)}
@@ -100,7 +100,7 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">
+              <div className="w-full h-full flex items-center justify-center text-text-secondary text-6xl">
                 🎬
               </div>
             )}
@@ -137,18 +137,18 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
 
           {/* Premiere Info */}
           <div className="p-4">
-            <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-netflix-red transition-colors">
+            <h3 className="text-lg font-semibold text-text-primary mb-2 line-clamp-2 group-hover:text-accent transition-colors">
               {premiere.title}
             </h3>
             
             {premiere.description && (
-              <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+              <p className="text-text-secondary text-sm mb-3 line-clamp-2">
                 {premiere.description}
               </p>
             )}
 
             {/* Start Time */}
-            <div className="flex items-center space-x-2 text-gray-300 text-sm mb-2">
+            <div className="flex items-center space-x-2 text-text-secondary text-sm mb-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -156,7 +156,7 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
             </div>
 
             {/* Video Info */}
-            <div className="flex items-center justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-gray-700">
+            <div className="flex items-center justify-between text-xs text-text-secondary opacity-70 mt-3 pt-3 border-t border-border">
               {premiere.video?.resolution && (
                 <span className="flex items-center space-x-1">
                   <span>📺</span>

@@ -24,8 +24,8 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">📊</div>
-        <h3 className="text-xl font-semibold text-white mb-2">No Presentations Found</h3>
-        <p className="text-gray-400">No presentations are available at the moment.</p>
+        <h3 className="text-xl font-semibold text-text-primary mb-2">No Presentations Found</h3>
+        <p className="text-text-secondary">No presentations are available at the moment.</p>
       </div>
     );
   }
@@ -38,9 +38,9 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
           onClick={() => onPresentationClick(presentation)}
           className="group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:z-10"
         >
-          <div className="relative bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+          <div className="relative bg-card rounded-lg overflow-hidden shadow-lg hover:bg-card-hover transition-colors">
             {/* Thumbnail */}
-            <div className="aspect-video bg-gray-700 relative overflow-hidden">
+            <div className="aspect-video bg-secondary relative overflow-hidden">
               {presentation.thumbnail ? (
                 <img
                   src={presentationService.getThumbnailUrl(presentation._id)}
@@ -53,7 +53,7 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-6xl text-gray-500">📊</div>
+                  <div className="text-6xl text-text-secondary">📊</div>
                 </div>
               )}
               
@@ -89,7 +89,7 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-8 h-8 text-text-primary ml-1" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z"/>
                     </svg>
                   </div>
@@ -99,16 +99,16 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
 
             {/* Content */}
             <div className="p-4">
-              <h3 className="text-white font-semibold text-lg mb-2 line-clamp-2 group-hover:text-red-400 transition-colors">
+              <h3 className="text-text-primary font-semibold text-lg mb-2 line-clamp-2 group-hover:text-accent transition-colors">
                 {presentation.title}
               </h3>
               
-              <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+              <p className="text-text-secondary text-sm mb-3 line-clamp-2">
                 {presentation.description}
               </p>
 
               {/* Stats */}
-              <div className="flex items-center justify-between text-sm text-gray-500">
+              <div className="flex items-center justify-between text-sm text-text-secondary">
                 <div className="flex items-center space-x-4">
                   <span className="flex items-center">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
@@ -136,13 +136,13 @@ const PresentationGrid: React.FC<PresentationGridProps> = ({ presentations, onPr
                   {presentation.tags.slice(0, 3).map((tag, index) => (
                     <span
                       key={index}
-                      className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded"
+                      className="px-2 py-1 bg-secondary text-text-secondary text-xs rounded"
                     >
                       {tag}
                     </span>
                   ))}
                   {presentation.tags.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
+                    <span className="px-2 py-1 bg-secondary text-text-secondary text-xs rounded">
                       +{presentation.tags.length - 3}
                     </span>
                   )}

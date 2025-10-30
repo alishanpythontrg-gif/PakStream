@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import AdminSidebar from './components/admin/AdminSidebar';
+import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserHomePage from './pages/user/UserHomePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -23,14 +25,14 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-primary flex flex-col">
       {/* Show regular navbar for non-admin users */}
       {user?.role !== 'admin' && <Navbar />}
       
       {/* Admin Layout with Sidebar */}
       {user?.role === 'admin' && <AdminSidebar />}
       
-      <main className={user?.role === 'admin' ? '' : ''}>
+      <main className={user?.role === 'admin' ? '' : 'flex-1'}>
         <Routes>
           {/* Public/User Routes */}
           <Route path="/" element={<UserHomePage />} />
@@ -89,6 +91,9 @@ const AppContent: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
@@ -96,9 +101,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };

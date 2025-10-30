@@ -238,12 +238,12 @@ const HeroSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <section className="relative h-screen bg-gradient-to-r from-netflix-black via-netflix-gray to-netflix-black">
+      <section className="relative h-screen bg-gradient-to-r from-primary via-secondary to-primary">
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="relative z-10 flex items-center justify-center h-full">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-xl text-white">Loading featured video...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+            <p className="text-xl text-text-primary">Loading featured video...</p>
           </div>
         </div>
       </section>
@@ -252,19 +252,19 @@ const HeroSection: React.FC = () => {
 
   if (error || !latestVideo) {
     return (
-      <section className="relative h-screen bg-gradient-to-r from-netflix-black via-netflix-gray to-netflix-black">
+      <section className="relative h-screen bg-gradient-to-r from-primary via-secondary to-primary">
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="relative z-10 flex items-center justify-center h-full">
           <div className="text-center max-w-4xl mx-auto px-4">
-            <h2 className="text-4xl md:text-6xl font-bold mb-6 text-white">
+            <h2 className="text-4xl md:text-6xl font-bold mb-6 text-text-primary">
               Welcome to PakStream
             </h2>
-            <p className="text-xl md:text-2xl text-gray-300 mb-8">
+            <p className="text-xl md:text-2xl text-text-secondary mb-8">
               {error || 'No videos available yet'}
             </p>
             <button
               onClick={fetchLatestVideo}
-              className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
+              className="bg-accent hover:opacity-90 text-text-primary px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
             >
               Refresh
             </button>
@@ -296,14 +296,14 @@ const HeroSection: React.FC = () => {
       {/* Content Overlay */}
       <div className="relative z-10 flex items-center justify-center h-full">
         <div className="text-center max-w-4xl mx-auto px-4">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-text-primary drop-shadow-lg">
             {latestVideo.title}
           </h1>
-          <p className="text-xl md:text-2xl text-gray-200 mb-8 drop-shadow-lg">
+          <p className="text-xl md:text-2xl text-text-secondary mb-8 drop-shadow-lg">
             {latestVideo.description}
           </p>
-          <div className="flex items-center justify-center space-x-4 text-gray-300">
-            <span className="bg-red-600 px-3 py-1 rounded text-sm font-semibold">
+          <div className="flex items-center justify-center space-x-4 text-text-secondary">
+            <span className="bg-accent px-3 py-1 rounded text-sm font-semibold text-text-primary">
               {latestVideo.category.toUpperCase()}
             </span>
             <span>•</span>
@@ -320,7 +320,7 @@ const HeroSection: React.FC = () => {
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={togglePlayPause}
-              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors"
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-3 rounded-full transition-colors"
             >
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -335,7 +335,7 @@ const HeroSection: React.FC = () => {
             
             <button
               onClick={toggleMute}
-              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors"
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-3 rounded-full transition-colors"
             >
               {isMuted ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -348,7 +348,7 @@ const HeroSection: React.FC = () => {
               )}
             </button>
 
-            <div className="text-white text-sm">
+            <div className="text-text-primary text-sm">
               {latestVideo.title}
             </div>
           </div>
@@ -360,7 +360,7 @@ const HeroSection: React.FC = () => {
         <div className="absolute inset-0 flex items-center justify-center">
           <button
             onClick={togglePlayPause}
-            className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-6 rounded-full transition-colors"
+            className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-6 rounded-full transition-colors"
           >
             <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>

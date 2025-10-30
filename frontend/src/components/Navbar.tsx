@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import LoginModal from './auth/LoginModal';
 import UserProfile from './auth/UserProfile';
+import ThemeSwitcher from './ThemeSwitcher';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -25,12 +26,12 @@ const Navbar: React.FC = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-netflix-black bg-opacity-95 backdrop-blur-sm z-40 border-b border-gray-800">
+      <nav className="fixed top-0 left-0 right-0 bg-primary bg-opacity-95 backdrop-blur-sm z-40 border-b border-border">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center space-x-8">
-              <Link to="/" className="text-2xl font-bold text-netflix-red">
+              <Link to="/" className="text-2xl font-bold text-accent">
                 🎬 PakStream
               </Link>
 
@@ -38,19 +39,19 @@ const Navbar: React.FC = () => {
               <div className="hidden md:flex items-center space-x-6">
                 <button
                   onClick={() => scrollToSection('videos')}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-text-primary hover:text-text-secondary transition-colors"
                 >
                   Videos
                 </button>
                 <button
                   onClick={() => scrollToSection('presentations')}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-text-primary hover:text-text-secondary transition-colors"
                 >
                   Presentations
                 </button>
                 <button
                   onClick={() => scrollToSection('premieres')}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-text-primary hover:text-text-secondary transition-colors"
                 >
                   Premieres
                 </button>
@@ -59,6 +60,9 @@ const Navbar: React.FC = () => {
 
             {/* User Actions */}
             <div className="flex items-center space-x-4">
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
+
               {user ? (
                 <div className="flex items-center space-x-4">
                   {/* Admin Dashboard Link */}
@@ -75,14 +79,14 @@ const Navbar: React.FC = () => {
                   <div className="relative">
                     <button
                       onClick={() => setShowUserProfile(!showUserProfile)}
-                      className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors"
+                      className="flex items-center space-x-2 text-text-primary hover:text-text-secondary transition-colors"
                     >
-                      <div className="w-8 h-8 bg-netflix-red rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-text-primary">
                         {user.username.charAt(0).toUpperCase()}
                       </div>
                       <span className="hidden md:block">{user.username}</span>
                       {user.role === 'admin' && (
-                        <span className="hidden md:block text-xs bg-red-600 px-2 py-1 rounded">
+                        <span className="hidden md:block text-xs bg-accent px-2 py-1 rounded text-text-primary">
                           Admin
                         </span>
                       )}

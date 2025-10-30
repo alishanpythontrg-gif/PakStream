@@ -182,9 +182,9 @@ const UserHomePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <div className="text-center text-text-primary">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
           <p className="text-xl">Loading PakStream...</p>
         </div>
       </div>
@@ -215,9 +215,14 @@ const UserHomePage: React.FC = () => {
       <HeroSection />
 
       {/* Videos Section */}
-      <section id="videos" className="py-16">
+      <section id="videos" className="py-10">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-white mb-8">Videos</h2>
+          <div className="mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-4 tracking-tight">
+              Videos
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-accent to-transparent rounded-full"></div>
+          </div>
           <VideoGrid 
             videos={videos} 
             loading={loading}
@@ -227,9 +232,14 @@ const UserHomePage: React.FC = () => {
       </section>
 
       {/* Presentations Section */}
-      <section id="presentations" className="py-16">
+      <section id="presentations" className="py-10">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-white mb-8">Presentations</h2>
+          <div className="mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-4 tracking-tight">
+              Presentations
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-accent to-transparent rounded-full"></div>
+          </div>
           <PresentationGrid 
             presentations={presentations} 
             onPresentationClick={handlePresentationClick}
@@ -238,9 +248,14 @@ const UserHomePage: React.FC = () => {
       </section>
 
       {/* Premieres Section */}
-      <section id="premieres" className="py-16">
+      <section id="premieres" className="py-10">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-white mb-8">Premieres</h2>
+          <div className="mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-4 tracking-tight">
+              Premieres
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-accent to-transparent rounded-full"></div>
+          </div>
           <PremiereGrid 
             premieres={upcomingPremieres} 
             loading={premieresLoading}

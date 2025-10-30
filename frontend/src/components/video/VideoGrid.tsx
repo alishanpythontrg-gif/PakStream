@@ -43,11 +43,11 @@ const VideoGrid: React.FC<VideoGridProps> = ({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {[...Array(8)].map((_, index) => (
-          <div key={index} className="bg-netflix-gray rounded-lg overflow-hidden animate-pulse">
-            <div className="aspect-video bg-gray-700"></div>
+          <div key={index} className="bg-card rounded-lg overflow-hidden animate-pulse">
+            <div className="aspect-video bg-secondary"></div>
             <div className="p-4">
-              <div className="h-4 bg-gray-700 rounded mb-2"></div>
-              <div className="h-3 bg-gray-700 rounded w-2/3"></div>
+              <div className="h-4 bg-secondary rounded mb-2"></div>
+              <div className="h-3 bg-secondary rounded w-2/3"></div>
             </div>
           </div>
         ))}
@@ -58,8 +58,8 @@ const VideoGrid: React.FC<VideoGridProps> = ({
   if (videos.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-400 text-lg mb-4">No videos found</div>
-        <p className="text-gray-500">Try adjusting your filters or upload a new video</p>
+        <div className="text-text-secondary text-lg mb-4">No videos found</div>
+        <p className="text-text-secondary opacity-70">Try adjusting your filters or upload a new video</p>
       </div>
     );
   }
@@ -67,7 +67,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {videos.map((video) => (
-        <div key={video._id} className="bg-netflix-gray rounded-lg overflow-hidden group hover:scale-105 transition-transform">
+        <div key={video._id} className="bg-card rounded-lg overflow-hidden group hover:scale-105 hover:bg-card-hover transition-all">
           <div className="relative aspect-video bg-black">
             {video.processedFiles?.poster ? (
               <img
@@ -77,8 +77,8 @@ const VideoGrid: React.FC<VideoGridProps> = ({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <div className="text-gray-400 text-center">
-                  <div className="text-4xl mb-2">��</div>
+                <div className="text-text-secondary text-center">
+                  <div className="text-4xl mb-2">🎬</div>
                   <div className="text-sm">No thumbnail</div>
                 </div>
               </div>
@@ -93,7 +93,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
 
             {/* Duration Badge */}
             <div className="absolute top-2 right-2">
-              <span className="px-2 py-1 rounded text-xs font-semibold text-white bg-black bg-opacity-75">
+              <span className="px-2 py-1 rounded text-xs font-semibold text-text-primary bg-black bg-opacity-75">
                 {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
               </span>
             </div>
@@ -102,7 +102,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-30">
               <button
                 onClick={() => onVideoClick(video)}
-                className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors"
+                className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-3 rounded-full transition-colors"
               >
                 <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
@@ -118,7 +118,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
                     e.stopPropagation();
                     onDeleteClick(video);
                   }}
-                  className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors"
+                  className="bg-accent hover:opacity-90 text-text-primary p-2 rounded-full transition-colors"
                   title="Delete video"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -130,15 +130,15 @@ const VideoGrid: React.FC<VideoGridProps> = ({
           </div>
 
           <div className="p-4">
-            <h3 className="text-white font-semibold mb-2 line-clamp-2">{video.title}</h3>
-            <p className="text-gray-400 text-sm mb-3 line-clamp-2">{video.description}</p>
+            <h3 className="text-text-primary font-semibold mb-2 line-clamp-2">{video.title}</h3>
+            <p className="text-text-secondary text-sm mb-3 line-clamp-2">{video.description}</p>
             
-            <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex items-center justify-between text-sm text-text-secondary">
               <span className="capitalize">{video.category}</span>
               <span>{video.views} views</span>
             </div>
 
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-text-secondary opacity-70">
               <div>Size: {formatFileSize(video.fileSize)}</div>
               <div>Resolution: {video.resolution}</div>
               <div>Uploaded by: {video.uploadedBy.username}</div>
@@ -147,12 +147,12 @@ const VideoGrid: React.FC<VideoGridProps> = ({
             {video.tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
                 {video.tags.slice(0, 3).map((tag, index) => (
-                  <span key={index} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
+                  <span key={index} className="px-2 py-1 bg-secondary text-text-secondary text-xs rounded">
                     {tag}
                   </span>
                 ))}
                 {video.tags.length > 3 && (
-                  <span className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
+                  <span className="px-2 py-1 bg-secondary text-text-secondary text-xs rounded">
                     +{video.tags.length - 3} more
                   </span>
                 )}
