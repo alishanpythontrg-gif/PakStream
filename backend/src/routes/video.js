@@ -11,7 +11,8 @@ const {
   updateVideo,
   deleteVideo,
   getVideoStatus,
-  getQueueStatus
+  getQueueStatus,
+  trackVideoView
 } = require('../controllers/videoController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
@@ -51,6 +52,7 @@ router.get('/featured/list', getFeaturedVideos); // Must come before /:id route
 router.get('/queue/status', getQueueStatus); // Get processing queue status
 router.get('/:id', getVideoById);
 router.get('/:id/status', getVideoStatus);
+router.post('/:id/view', trackVideoView); // Track video view (public endpoint)
 
 // Serve video files with range request support for seeking
 router.get('/:id/original', async (req, res) => {
@@ -147,8 +149,33 @@ router.get('/:id/hls/*', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache thumbnails for 1 day
     }
 
-    // Enable CORS for HLS streaming
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Enable CORS for HLS streaming using configured origins
+    const { appConfig } = require('../config/appConfig');
+    
+    // Helper function to check if origin matches allowed origins (including regex patterns)
+    function isOriginAllowed(origin, allowedOrigins) {
+      if (!origin) return false;
+      for (const allowed of allowedOrigins) {
+        if (typeof allowed === 'string') {
+          if (allowed === origin) return true;
+        } else if (allowed instanceof RegExp) {
+          if (allowed.test(origin)) return true;
+        }
+      }
+      return false;
+    }
+    
+    const origin = req.headers.origin;
+    if (origin && isOriginAllowed(origin, appConfig.cors.origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (appConfig.cors.origin.length > 0) {
+      // Find first string origin (not regex) as fallback
+      const stringOrigin = appConfig.cors.origin.find(o => typeof o === 'string');
+      if (stringOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', stringOrigin);
+      }
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
     res.sendFile(filePath);

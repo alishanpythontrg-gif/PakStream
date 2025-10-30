@@ -13,6 +13,10 @@ const HeroSection: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // View tracking refs
+  const playStartTrackedRef = useRef(false);
+  const watch30TrackedRef = useRef(false);
+  const currentVideoIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchLatestVideo();
@@ -20,6 +24,12 @@ const HeroSection: React.FC = () => {
 
   useEffect(() => {
     if (latestVideo && videoRef.current) {
+      // Reset view tracking when video changes
+      if (currentVideoIdRef.current !== latestVideo._id) {
+        playStartTrackedRef.current = false;
+        watch30TrackedRef.current = false;
+        currentVideoIdRef.current = latestVideo._id;
+      }
       setupVideoPlayer();
     }
 
@@ -27,6 +37,9 @@ const HeroSection: React.FC = () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
       }
+      // Reset view tracking when component unmounts
+      playStartTrackedRef.current = false;
+      watch30TrackedRef.current = false;
     };
   }, [latestVideo]);
 
@@ -92,6 +105,14 @@ const HeroSection: React.FC = () => {
         video.play().then(() => {
           setIsPlaying(true);
           console.log('Video started playing');
+          
+          // Track "play start" view
+          if (!playStartTrackedRef.current && latestVideo?._id) {
+            playStartTrackedRef.current = true;
+            videoService.trackVideoView(latestVideo._id, 'start').catch(err => {
+              console.warn('Failed to track play start view:', err);
+            });
+          }
         }).catch((error) => {
           console.error('Failed to start video:', error);
         });
@@ -128,6 +149,14 @@ const HeroSection: React.FC = () => {
       video.addEventListener('loadedmetadata', () => {
         video.play().then(() => {
           setIsPlaying(true);
+          
+          // Track "play start" view
+          if (!playStartTrackedRef.current && latestVideo?._id) {
+            playStartTrackedRef.current = true;
+            videoService.trackVideoView(latestVideo._id, 'start').catch(err => {
+              console.warn('Failed to track play start view:', err);
+            });
+          }
         }).catch(console.error);
       });
     } else {
@@ -138,6 +167,14 @@ const HeroSection: React.FC = () => {
     video.addEventListener('play', () => {
       setIsPlaying(true);
       console.log('Video playing');
+      
+      // Track "play start" view
+      if (!playStartTrackedRef.current && latestVideo?._id) {
+        playStartTrackedRef.current = true;
+        videoService.trackVideoView(latestVideo._id, 'start').catch(err => {
+          console.warn('Failed to track play start view:', err);
+        });
+      }
     });
     video.addEventListener('pause', () => {
       setIsPlaying(false);
@@ -146,6 +183,15 @@ const HeroSection: React.FC = () => {
     video.addEventListener('ended', () => {
       setIsPlaying(false);
       console.log('Video ended');
+    });
+    video.addEventListener('timeupdate', () => {
+      // Track "30 seconds watched" view
+      if (video.currentTime >= 30 && !watch30TrackedRef.current && latestVideo?._id) {
+        watch30TrackedRef.current = true;
+        videoService.trackVideoView(latestVideo._id, 'watch30').catch(err => {
+          console.warn('Failed to track 30s view:', err);
+        });
+      }
     });
     video.addEventListener('error', (e) => {
       console.error('Video error:', e);

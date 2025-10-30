@@ -71,7 +71,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({
           <div className="relative aspect-video bg-black">
             {video.processedFiles?.poster ? (
               <img
-                src={`http://localhost:5000/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`}
+                src={`${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`}
                 alt={video.title}
                 className="w-full h-full object-cover"
               />

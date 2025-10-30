@@ -153,7 +153,7 @@ class PremiereService {
     if (!video.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${video._id}/hls/${video.processedFiles.poster}`;
+    return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
   }
 }
 

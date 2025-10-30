@@ -155,7 +155,7 @@ const AdminPremiereDashboard: React.FC = () => {
     if (!premiere.video?.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '')}/videos/${premiere.video?._id}/hls/${premiere.video?.processedFiles.poster}`;
+    return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${premiere.video?._id}/hls/${premiere.video?.processedFiles.poster}`;
   };
 
   if (loading) {

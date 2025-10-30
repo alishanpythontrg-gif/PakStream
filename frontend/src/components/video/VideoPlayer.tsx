@@ -53,6 +53,11 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const isInitializingRef = useRef(false);
   const retryCountRef = useRef(0);
   const MAX_RETRY_ATTEMPTS = 3;
+  
+  // View tracking refs
+  const playStartTrackedRef = useRef(false);
+  const watch30TrackedRef = useRef(false);
+  const currentVideoIdRef = useRef<string | null>(null);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -86,6 +91,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
 
   useEffect(() => {
     if (!video || !video._id) return;
+
+    // Reset view tracking when video changes
+    if (currentVideoIdRef.current !== video._id) {
+      playStartTrackedRef.current = false;
+      watch30TrackedRef.current = false;
+      currentVideoIdRef.current = video._id;
+    }
 
     // Prevent re-initialization if already initialized for this video
     if (isInitializingRef.current) {
@@ -261,12 +273,29 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
         };
 
         const handleTimeUpdate = () => {
-          setCurrentTime(videoElement.currentTime);
+          const newTime = videoElement.currentTime;
+          setCurrentTime(newTime);
+          
+          // Track "30 seconds watched" view
+          if (newTime >= 30 && !watch30TrackedRef.current && video._id) {
+            watch30TrackedRef.current = true;
+            videoService.trackVideoView(video._id, 'watch30').catch(err => {
+              console.warn('Failed to track 30s view:', err);
+            });
+          }
         };
 
         const handlePlay = () => {
           setIsPlaying(true);
           onPlay?.();
+          
+          // Track "play start" view
+          if (!playStartTrackedRef.current && video._id) {
+            playStartTrackedRef.current = true;
+            videoService.trackVideoView(video._id, 'start').catch(err => {
+              console.warn('Failed to track play start view:', err);
+            });
+          }
         };
 
         const handlePause = () => {
@@ -334,6 +363,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
       }
       isInitializingRef.current = false;
       retryCountRef.current = 0;
+      // Reset view tracking when component unmounts
+      playStartTrackedRef.current = false;
+      watch30TrackedRef.current = false;
     };
   }, [video?._id]); // Only re-initialize when video ID changes
 

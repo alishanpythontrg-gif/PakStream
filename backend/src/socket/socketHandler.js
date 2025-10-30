@@ -1,16 +1,11 @@
 const { Server } = require('socket.io');
 const Premiere = require('../models/Premiere');
+const { appConfig } = require('../config/appConfig');
 
 class SocketHandler {
   constructor(server) {
     this.io = new Server(server, {
-      cors: {
-        origin: process.env.NODE_ENV === 'production' 
-          ? ['https://yourdomain.com'] 
-          : ['http://localhost:3000'],
-        methods: ['GET', 'POST'],
-        credentials: true
-      }
+      cors: appConfig.socketCors
     });
 
     this.premiereRooms = new Map(); // Store premiere room data

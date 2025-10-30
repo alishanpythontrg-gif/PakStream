@@ -145,6 +145,29 @@ class VideoService {
 
     return `${API_BASE_URL.replace('/api', '')}/api/videos/${video._id}/original`;
   }
+
+  /**
+   * Track video view
+   * @param videoId - Video ID
+   * @param viewType - 'start' for playback start, 'watch30' for 30 seconds watched
+   */
+  async trackVideoView(videoId: string, viewType: 'start' | 'watch30'): Promise<void> {
+    try {
+      // Make POST request to track view (no auth needed, public endpoint)
+      await fetch(`${API_BASE_URL}/videos/${videoId}/view?type=${viewType}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }).catch(err => {
+        // Silently handle errors - don't interrupt video playback
+        console.warn('Failed to track video view:', err);
+      });
+    } catch (error) {
+      // Silently handle errors - don't interrupt video playback
+      console.warn('Failed to track video view:', error);
+    }
+  }
 }
 
 export default new VideoService();

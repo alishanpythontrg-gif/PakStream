@@ -180,14 +180,6 @@ const getVideoById = async (req, res) => {
       });
     }
 
-    // Increment view count asynchronously without blocking response
-    // This prevents the view counter from slowing down video playback start
-    Video.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: false }
-    ).catch(err => console.error('Failed to update view count:', err));
-
     res.json({
       success: true,
       data: { video }
@@ -356,6 +348,58 @@ const getVideoStatus = async (req, res) => {
   }
 };
 
+// Track video view (play start or 30 seconds watched)
+const trackVideoView = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type = 'start' } = req.query; // 'start' or 'watch30'
+
+    // Validate view type
+    if (type !== 'start' && type !== 'watch30') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid view type. Must be "start" or "watch30"'
+      });
+    }
+
+    // Check if video exists
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      });
+    }
+
+    // Increment view count atomically
+    await Video.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: false }
+    ).catch(err => {
+      console.error('Failed to update view count:', err);
+      // Don't fail the request if view tracking fails
+    });
+
+    // Return success response
+    res.json({
+      success: true,
+      message: `View tracked: ${type}`,
+      data: {
+        videoId: id,
+        viewType: type
+      }
+    });
+  } catch (error) {
+    console.error('View tracking error:', error);
+    // Don't fail the request - view tracking is non-critical
+    res.status(200).json({
+      success: true,
+      message: 'View tracking attempted'
+    });
+  }
+};
+
 module.exports = {
   uploadVideo,
   getVideos,
@@ -365,5 +409,6 @@ module.exports = {
   updateVideo,
   deleteVideo,
   getVideoStatus,
-  getQueueStatus
+  getQueueStatus,
+  trackVideoView
 };
