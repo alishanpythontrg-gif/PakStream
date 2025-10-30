@@ -36,29 +36,10 @@ const CDN_CONFIG = {
 
 /**
  * Get static file URL for a given file path
- * Supports multiple edge servers with load balancing
  * @param {string} filePath - Relative path to the file (e.g., 'videos/processed/123/hls/master.m3u8')
  * @returns {string} - Full URL or relative path
  */
-async function getCdnUrl(filePath) {
-  // Try to get active edge servers
-  try {
-    const EdgeServer = require('../models/EdgeServer');
-    const activeServers = await EdgeServer.find({ status: 'active' }).lean();
-    
-    if (activeServers.length > 0) {
-      // Load balance across edge servers (round-robin based on filename hash)
-      const hash = filePath.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const selectedServer = activeServers[hash % activeServers.length];
-      
-      const baseUrl = `${selectedServer.protocol}://${selectedServer.host}:${selectedServer.port}`;
-      const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-      return `${baseUrl}/uploads/${normalizedPath}`;
-    }
-  } catch (error) {
-    console.error('Error getting edge servers:', error);
-  }
-  
+function getCdnUrl(filePath) {
   // If base URL is configured, use it (for intranet deployment)
   if (CDN_CONFIG.baseUrl) {
     const baseUrl = CDN_CONFIG.baseUrl.endsWith('/') 

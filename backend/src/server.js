@@ -63,7 +63,6 @@ app.use('/api/users', require('./routes/user'));
 app.use('/api/videos', require('./routes/video'));
 app.use('/api/premieres', require('./routes/premiere'));
 app.use('/api/presentations', require('./routes/presentation'));
-app.use('/api/edge', require('./routes/edge'));
 
 // 404 handler
 app.use((req, res) => {
@@ -95,11 +94,6 @@ server.listen(PORT, () => {
   console.log(`Video uploads: http://localhost:${PORT}/uploads/videos/`);
   console.log(`Original videos: http://localhost:${PORT}/api/videos/:id/original`);
   console.log(`Presentations: http://localhost:${PORT}/api/presentations`);
-  
-  // Start edge server health monitoring
-  const edgeSyncService = require('./services/edgeSyncService');
-  edgeSyncService.startHealthMonitoring(60000); // Check every minute
-  console.log('Edge server monitoring started');
 });
 
 // Export socket handler for use in other modules

@@ -85,16 +85,6 @@ class VideoQueue {
       
       console.log(`Video processing completed for ${videoId}`);
       
-      // Sync to edge servers in background
-      const edgeSyncService = require('./edgeSyncService');
-      edgeSyncService.syncVideoToEdges(videoId, inputPath, outputDir)
-        .then(result => {
-          console.log(`Video ${videoId} synced to edge servers:`, result);
-        })
-        .catch(error => {
-          console.error(`Failed to sync video ${videoId} to edge servers:`, error);
-        });
-      
       // Emit completion event
       if (this.io) {
         this.io.emit('videoProcessingComplete', {
