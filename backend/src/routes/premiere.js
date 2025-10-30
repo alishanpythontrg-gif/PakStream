@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createPremiere,
   getActivePremiere,
+  getUpcomingPremieres,
   getAllPremieres,
   joinPremiere,
   endPremiere,
@@ -13,6 +14,7 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 // Public routes
 router.get('/active', getActivePremiere);
+router.get('/upcoming', getUpcomingPremieres);
 
 // Protected routes
 router.post('/join', authenticateToken, joinPremiere);

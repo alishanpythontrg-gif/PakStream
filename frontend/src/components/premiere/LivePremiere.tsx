@@ -58,6 +58,14 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
 
     const handlePremiereStarted = (data: any) => {
       console.log('Premiere started:', data);
+      // Auto-play video when premiere starts
+      if (videoRef.current && isVideoReady) {
+        setTimeout(() => {
+          console.log('Auto-playing video after premiere started');
+          videoRef.current?.play();
+          socketService.playVideo(premiere._id);
+        }, 500);
+      }
     };
 
     const handlePremiereEnded = (data: any) => {
@@ -210,7 +218,7 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
 
   // Auto-play video when ready (triggered after countdown or when premiere starts)
   useEffect(() => {
-    if (isVideoReady && videoRef.current && !autoPlayAttemptedRef.current) {
+    if (isVideoReady && videoRef.current && !autoPlayAttemptedRef.current && premiere.status === 'live') {
       autoPlayAttemptedRef.current = true;
       
       // Small delay to ensure video player is fully initialized
@@ -220,11 +228,11 @@ const LivePremiere: React.FC<LivePremiereProps> = ({ premiere, onClose }) => {
         
         // Notify other viewers via socket
         socketService.playVideo(premiere._id);
-      }, 500);
+      }, 1000);
 
       return () => clearTimeout(autoPlayTimer);
     }
-  }, [isVideoReady, premiere._id]);
+  }, [isVideoReady, premiere._id, premiere.status]);
 
   // Convert premiere video to Video type for VideoPlayer
   // Only create this if validation passed

@@ -10,6 +10,7 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import VideoManagementPage from './pages/admin/VideoManagementPage';
 import PresentationManagementPage from './pages/admin/PresentationManagementPage';
 import PremiereManagementPage from './pages/admin/PremiereManagementPage';
+import LivePremiereControlPage from './pages/admin/LivePremiereControlPage';
 import socketService from './services/socketService';
 import './index.css';
 
@@ -72,6 +73,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute requireAdmin>
                 <PremiereManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/premieres/:premiereId/control"
+            element={
+              <ProtectedRoute requireAdmin>
+                <LivePremiereControlPage />
               </ProtectedRoute>
             }
           />

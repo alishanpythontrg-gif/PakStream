@@ -87,6 +87,11 @@ class PremiereService {
     return this.publicRequest<PremiereResponse>('/premieres/active');
   }
 
+  // Public method - get upcoming premieres (no auth required)
+  async getUpcomingPremieres(): Promise<PremieresResponse> {
+    return this.publicRequest<PremieresResponse>('/premieres/upcoming');
+  }
+
   async getPremiereById(premiereId: string): Promise<PremiereResponse> {
     return this.request<PremiereResponse>(`/premieres/${premiereId}`);
   }

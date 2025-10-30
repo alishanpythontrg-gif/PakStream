@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Premiere, CreatePremiereData } from '../../types/premiere';
 import { Video } from '../../types/video';
 import premiereService from '../../services/premiereService';
@@ -8,6 +9,7 @@ import { useAuth } from '../../hooks';
 
 const AdminPremiereDashboard: React.FC = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [premieres, setPremieres] = useState<Premiere[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [activePremiere, setActivePremiere] = useState<Premiere | null>(null);
@@ -287,12 +289,20 @@ const AdminPremiereDashboard: React.FC = () => {
                         </button>
                       )}
                       {premiere.status === 'live' && (
-                        <button
-                          onClick={() => handleEndPremiere(premiere._id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                        >
-                          End
-                        </button>
+                        <>
+                          <button
+                            onClick={() => navigate(`/admin/premieres/${premiere._id}/control`)}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                          >
+                            Control
+                          </button>
+                          <button
+                            onClick={() => handleEndPremiere(premiere._id)}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                          >
+                            End
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => handleDeletePremiere(premiere._id)}

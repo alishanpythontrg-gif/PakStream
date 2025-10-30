@@ -158,6 +158,11 @@ class SocketHandler {
             isPlaying: true
           });
 
+          // Auto-play video for all viewers when admin starts premiere
+          setTimeout(() => {
+            this.io.to(`premiere-${premiereId}`).emit('video-play');
+          }, 1000);
+
           console.log(`Premiere ${premiereId} started by admin`);
         } catch (error) {
           console.error('Error starting premiere:', error);

@@ -102,6 +102,38 @@ const getActivePremiere = async (req, res) => {
   }
 };
 
+const getUpcomingPremieres = async (req, res) => {
+  try {
+    const now = new Date();
+    
+    // Get scheduled premieres that haven't started yet, sorted by start time
+    const premieres = await Premiere.find({
+      status: 'scheduled',
+      isActive: true,
+      startTime: { $gt: now } // Only future premieres
+    })
+      .populate({
+        path: 'video',
+        select: '_id title description duration resolution status processedFiles originalFile uploadedBy'
+      })
+      .populate('createdBy', 'username')
+      .sort({ startTime: 1 }) // Sort by start time ascending
+      .limit(12);
+
+    res.json({
+      success: true,
+      data: { premieres }
+    });
+  } catch (error) {
+    console.error('Get upcoming premieres error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get upcoming premieres',
+      error: error.message
+    });
+  }
+};
+
 const getAllPremieres = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
@@ -305,6 +337,7 @@ const deletePremiere = async (req, res) => {
 module.exports = {
   createPremiere,
   getActivePremiere,
+  getUpcomingPremieres,
   getAllPremieres,
   joinPremiere,
   endPremiere,

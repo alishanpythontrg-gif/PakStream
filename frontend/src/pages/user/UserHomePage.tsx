@@ -6,6 +6,7 @@ import VideoPlayer from '../../components/video/VideoPlayer';
 import PresentationViewer from '../../components/presentation/PresentationViewer';
 import LivePremiere from '../../components/premiere/LivePremiere';
 import ScheduledPremiere from '../../components/premiere/ScheduledPremiere';
+import PremiereGrid from '../../components/premiere/PremiereGrid';
 import VideoProcessingStatus from '../../components/video/VideoProcessingStatus';
 import videoService from '../../services/videoService';
 import presentationService from '../../services/presentationService';
@@ -24,10 +25,13 @@ const UserHomePage: React.FC = () => {
   const [showPresentationViewer, setShowPresentationViewer] = useState(false);
   const [activePremiere, setActivePremiere] = useState<Premiere | null>(null);
   const [showPremiere, setShowPremiere] = useState(false);
+  const [upcomingPremieres, setUpcomingPremieres] = useState<Premiere[]>([]);
+  const [premieresLoading, setPremieresLoading] = useState(false);
 
   useEffect(() => {
     initializeApp();
-    const interval = setInterval(checkActivePremiere, 30000);
+    // Check every 5 seconds to catch status updates faster when countdown finishes
+    const interval = setInterval(checkActivePremiere, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -37,7 +41,8 @@ const UserHomePage: React.FC = () => {
       await Promise.all([
         fetchVideos(),
         fetchPresentations(),
-        checkActivePremiere()
+        checkActivePremiere(),
+        fetchUpcomingPremieres()
       ]);
     } catch (error) {
       console.error('Failed to initialize app:', error);
@@ -55,6 +60,19 @@ const UserHomePage: React.FC = () => {
     }
   };
 
+  const fetchUpcomingPremieres = async () => {
+    try {
+      setPremieresLoading(true);
+      const response = await premiereService.getUpcomingPremieres();
+      setUpcomingPremieres(response.data.premieres || []);
+    } catch (error) {
+      console.error('Failed to fetch upcoming premieres:', error);
+      setUpcomingPremieres([]);
+    } finally {
+      setPremieresLoading(false);
+    }
+  };
+
   const fetchPresentations = async () => {
     try {
       const response = await presentationService.getPresentations({ limit: 12 });
@@ -69,14 +87,61 @@ const UserHomePage: React.FC = () => {
       const response = await premiereService.getActivePremiere();
       
       if (response.data.premiere) {
+        const premiere = response.data.premiere;
+        const timeUntilStart = premiereService.getTimeUntilStart(premiere.startTime);
+        const threeMinutesInMs = 3 * 60 * 1000; // 3 minutes in milliseconds
+        
+        // Always show live premieres
+        if (premiereService.isPremiereLive(premiere)) {
+          setActivePremiere(prev => {
+            if (prev && prev._id === premiere._id) {
+              if (prev.status !== premiere.status) {
+                return premiere;
+              }
+              return prev;
+            }
+            return premiere;
+          });
+          setShowPremiere(true);
+          return;
+        }
+        
+        // For scheduled premieres, only show if within 3 minutes of start OR countdown has finished
+        if (premiereService.isPremiereScheduled(premiere)) {
+          // Show if within 3 minutes OR if countdown has finished (timeUntilStart <= 0)
+          // This handles the case where countdown finished but backend hasn't updated status yet
+          if (timeUntilStart > threeMinutesInMs && timeUntilStart > 0) {
+            // Hide premiere if more than 3 minutes away AND countdown hasn't finished
+            if (activePremiere !== null) {
+              setActivePremiere(null);
+              setShowPremiere(false);
+            }
+            return;
+          }
+          
+          // Show scheduled premiere if within 3 minutes OR countdown finished
+          setActivePremiere(prev => {
+            if (prev && prev._id === premiere._id) {
+              if (prev.status !== premiere.status) {
+                return premiere;
+              }
+              return prev;
+            }
+            return premiere;
+          });
+          setShowPremiere(true);
+          return;
+        }
+        
+        // Fallback: show premiere if it exists
         setActivePremiere(prev => {
-          if (prev && prev._id === response.data.premiere._id) {
-            if (prev.status !== response.data.premiere.status) {
-              return response.data.premiere;
+          if (prev && prev._id === premiere._id) {
+            if (prev.status !== premiere.status) {
+              return premiere;
             }
             return prev;
           }
-          return response.data.premiere;
+          return premiere;
         });
         setShowPremiere(true);
       } else {
@@ -176,10 +241,10 @@ const UserHomePage: React.FC = () => {
       <section id="premieres" className="py-16">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-bold text-white mb-8">Premieres</h2>
-          <div className="text-center text-gray-400">
-            <p className="text-lg mb-4">Live and upcoming premieres will appear here</p>
-            <p className="text-sm">Check back for exciting new content!</p>
-          </div>
+          <PremiereGrid 
+            premieres={upcomingPremieres} 
+            loading={premieresLoading}
+          />
         </div>
       </section>
 
