@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 
 interface LoginModalProps {
@@ -8,6 +9,7 @@ interface LoginModalProps {
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -21,8 +23,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      await login(formData);
+      const response = await login(formData);
       onClose();
+      // Redirect admins to admin dashboard
+      if (response.data.user.role === 'admin') {
+        navigate('/admin');
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {

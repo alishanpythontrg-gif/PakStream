@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import LoginModal from './auth/LoginModal';
 import UserProfile from './auth/UserProfile';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
   const handleLogout = () => {
     logout();
     setShowUserProfile(false);
+    navigate('/');
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -27,9 +30,9 @@ const Navbar: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center space-x-8">
-              <div className="text-2xl font-bold text-netflix-red">
+              <Link to="/" className="text-2xl font-bold text-netflix-red">
                 🎬 PakStream
-              </div>
+              </Link>
 
               {/* Navigation Links */}
               <div className="hidden md:flex items-center space-x-6">
@@ -58,22 +61,14 @@ const Navbar: React.FC = () => {
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
-                  {/* Upload Buttons for Admins */}
+                  {/* Admin Dashboard Link */}
                   {user.role === 'admin' && (
-                    <>
-                      <button
-                        onClick={() => scrollToSection('admin-videos')}
-                        className="btn-primary text-sm"
-                      >
-                        Upload Video
-                      </button>
-                      <button
-                        onClick={() => scrollToSection('admin-presentations')}
-                        className="btn-secondary text-sm"
-                      >
-                        Upload Presentation
-                      </button>
-                    </>
+                    <Link
+                      to="/admin"
+                      className="btn-primary text-sm"
+                    >
+                      Admin Dashboard
+                    </Link>
                   )}
 
                   {/* User Profile */}
