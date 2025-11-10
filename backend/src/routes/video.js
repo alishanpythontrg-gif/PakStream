@@ -152,26 +152,46 @@ router.get('/:id/hls/*', async (req, res) => {
     // Enable CORS for HLS streaming using configured origins
     const { appConfig } = require('../config/appConfig');
     
-    // Helper function to check if origin matches allowed origins (including regex patterns)
+    // Helper function to check if origin matches allowed origins (including '*' for all origins)
     function isOriginAllowed(origin, allowedOrigins) {
       if (!origin) return false;
-      for (const allowed of allowedOrigins) {
-        if (typeof allowed === 'string') {
-          if (allowed === origin) return true;
-        } else if (allowed instanceof RegExp) {
-          if (allowed.test(origin)) return true;
+      
+      // Allow all origins if configured as '*'
+      if (allowedOrigins === '*') {
+        return true;
+      }
+      
+      // Handle array of origins
+      if (Array.isArray(allowedOrigins)) {
+        for (const allowed of allowedOrigins) {
+          if (typeof allowed === 'string') {
+            if (allowed === origin) return true;
+          } else if (allowed instanceof RegExp) {
+            if (allowed.test(origin)) return true;
+          }
         }
       }
+      
       return false;
     }
     
     const origin = req.headers.origin;
-    if (origin && isOriginAllowed(origin, appConfig.cors.origin)) {
+    const corsOrigin = appConfig.cors.origin;
+    
+    if (corsOrigin === '*') {
+      // Allow all origins
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (origin && isOriginAllowed(origin, corsOrigin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else if (appConfig.cors.origin.length > 0) {
+    } else if (Array.isArray(corsOrigin) && corsOrigin.length > 0) {
       // Find first string origin (not regex) as fallback
-      const stringOrigin = appConfig.cors.origin.find(o => typeof o === 'string');
+      const stringOrigin = corsOrigin.find(o => typeof o === 'string');
       if (stringOrigin) {
         res.setHeader('Access-Control-Allow-Origin', stringOrigin);
       }

@@ -12,7 +12,7 @@ const PremiereGrid: React.FC<PremiereGridProps> = ({ premieres, loading }) => {
     if (!premiere.video?.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${premiere.video._id}/hls/${premiere.video.processedFiles.poster}`;
+    return premiereService.getPosterUrl(premiere.video);
   };
 
   const formatTimeUntilStart = (startTime: string): string => {

@@ -6,24 +6,36 @@ require('dotenv').config();
 /**
  * Get CORS allowed origins
  * Priority: 
- * 1. CORS_ORIGIN environment variable (comma-separated)
+ * 1. CORS_ORIGIN environment variable (comma-separated or '*' for all origins)
  * 2. Environment-specific defaults
+ * 
+ * For Docker/network deployments, set CORS_ORIGIN=* to allow all origins
+ * or set specific origins: CORS_ORIGIN=http://192.168.1.100:3000,http://localhost:3000
  */
 function getCorsOrigins() {
   // Check if CORS_ORIGIN is explicitly set in environment
   if (process.env.CORS_ORIGIN) {
-    return process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
+    const origins = process.env.CORS_ORIGIN.trim();
+    
+    // Allow all origins if set to '*'
+    if (origins === '*') {
+      return '*';
+    }
+    
+    // Parse comma-separated origins
+    return origins.split(',').map(origin => origin.trim()).filter(origin => origin.length > 0);
   }
 
   // Environment-specific defaults
   if (process.env.NODE_ENV === 'production') {
-    // Production: Replace with your actual production domain(s)
+    // Production: Default to restrictive, but allow override via CORS_ORIGIN env var
+    // For Docker deployments, set CORS_ORIGIN=* or specific origins
     return ['https://yourdomain.com'];
   }
 
-  // Development: Default to localhost and allow local network access
-  // This allows access from http://192.168.x.x:3000, http://localhost:3000, etc.
-  return ['http://localhost:3000', /^http:\/\/192\.168\.\d+\.\d+:\d+$/, /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/];
+  // Development/Docker: Allow all origins by default for easier network access
+  // This allows access from any IP address and port, perfect for Docker/VM deployments
+  return '*';
 }
 
 /**

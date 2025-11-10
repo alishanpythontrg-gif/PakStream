@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import videoService from '../../services/videoService';
+import { SOCKET_URL } from '../../config/api';
 
 interface ProcessingVideo {
   videoId: string;
@@ -22,8 +23,7 @@ const VideoProcessingStatus: React.FC<VideoProcessingStatusProps> = ({ onVideoRe
 
   useEffect(() => {
     // Connect to socket
-    const socketUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    const newSocket = io(socketUrl);
+    const newSocket = io(SOCKET_URL);
 
     newSocket.on('connect', () => {
       console.log('Connected to processing status socket');

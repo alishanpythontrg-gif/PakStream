@@ -271,7 +271,7 @@ const LivePremiereControlPage: React.FC = () => {
             <div className="mt-6">
               <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
                 <img
-                  src={`${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${premiere.video._id}/hls/${premiere.video.processedFiles.poster}`}
+                  src={premiereService.getPosterUrl(premiere.video)}
                   alt={premiere.title}
                   className="w-full h-full object-cover"
                 />

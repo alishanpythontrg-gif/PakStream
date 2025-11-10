@@ -1,6 +1,5 @@
 import { Presentation, CreatePresentationData, PresentationResponse, SinglePresentationResponse, SlidesResponse } from '../types/presentation';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, getBaseUrl } from '../config/api';
 
 class PresentationService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -103,15 +102,18 @@ class PresentationService {
   }
 
   getImageUrl(presentationId: string, slideNumber: number): string {
-    return `${API_BASE_URL.replace('/api', '')}/uploads/presentations/processed/${presentationId}/slides/slide_${slideNumber}.jpg`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/presentations/processed/${presentationId}/slides/slide_${slideNumber}.jpg`;
   }
 
   getThumbnailUrl(presentationId: string): string {
-    return `${API_BASE_URL.replace('/api', '')}/uploads/presentations/processed/${presentationId}/thumbnail.jpg`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/presentations/processed/${presentationId}/thumbnail.jpg`;
   }
 
   getSlideThumbnailUrl(presentationId: string, slideNumber: number): string {
-    return `${API_BASE_URL.replace('/api', '')}/uploads/presentations/processed/${presentationId}/thumbnails/thumb_slide_${slideNumber}.jpg`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/presentations/processed/${presentationId}/thumbnails/thumb_slide_${slideNumber}.jpg`;
   }
 }
 

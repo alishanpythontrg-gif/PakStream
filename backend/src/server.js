@@ -34,17 +34,26 @@ mongoose.connect(appConfig.database.uri, {
   process.exit(1);
 });
 
-// Helper function to check if origin matches allowed origins (including regex patterns)
+// Helper function to check if origin matches allowed origins (including '*' for all origins)
 function isOriginAllowed(origin, allowedOrigins) {
   if (!origin) return false;
   
-  for (const allowed of allowedOrigins) {
-    if (typeof allowed === 'string') {
-      if (allowed === origin) return true;
-    } else if (allowed instanceof RegExp) {
-      if (allowed.test(origin)) return true;
+  // Allow all origins if configured as '*'
+  if (allowedOrigins === '*') {
+    return true;
+  }
+  
+  // Handle array of origins
+  if (Array.isArray(allowedOrigins)) {
+    for (const allowed of allowedOrigins) {
+      if (typeof allowed === 'string') {
+        if (allowed === origin) return true;
+      } else if (allowed instanceof RegExp) {
+        if (allowed.test(origin)) return true;
+      }
     }
   }
+  
   return false;
 }
 
@@ -52,12 +61,22 @@ function isOriginAllowed(origin, allowedOrigins) {
 app.use('/uploads/videos', (req, res, next) => {
   // Set CORS headers for video files using configured origins
   const origin = req.headers.origin;
-  if (origin && isOriginAllowed(origin, appConfig.cors.origin)) {
+  const corsOrigin = appConfig.cors.origin;
+  
+  if (corsOrigin === '*') {
+    // Allow all origins
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } else if (origin && isOriginAllowed(origin, corsOrigin)) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
-  } else if (appConfig.cors.origin.length > 0) {
+  } else if (Array.isArray(corsOrigin) && corsOrigin.length > 0) {
     // Find first string origin (not regex) as fallback
-    const stringOrigin = appConfig.cors.origin.find(o => typeof o === 'string');
+    const stringOrigin = corsOrigin.find(o => typeof o === 'string');
     if (stringOrigin) {
       res.header('Access-Control-Allow-Origin', stringOrigin);
     }
@@ -78,12 +97,22 @@ app.use('/uploads/videos', (req, res, next) => {
 app.use('/uploads/presentations', (req, res, next) => {
   // Set CORS headers for presentation files using configured origins
   const origin = req.headers.origin;
-  if (origin && isOriginAllowed(origin, appConfig.cors.origin)) {
+  const corsOrigin = appConfig.cors.origin;
+  
+  if (corsOrigin === '*') {
+    // Allow all origins
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } else if (origin && isOriginAllowed(origin, corsOrigin)) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
-  } else if (appConfig.cors.origin.length > 0) {
+  } else if (Array.isArray(corsOrigin) && corsOrigin.length > 0) {
     // Find first string origin (not regex) as fallback
-    const stringOrigin = appConfig.cors.origin.find(o => typeof o === 'string');
+    const stringOrigin = corsOrigin.find(o => typeof o === 'string');
     if (stringOrigin) {
       res.header('Access-Control-Allow-Origin', stringOrigin);
     }
@@ -127,11 +156,15 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Socket.IO server is running on port ${PORT}`);
   console.log(`Environment: ${appConfig.server.nodeEnv}`);
-  const corsOriginsStr = appConfig.cors.origin.map(o => typeof o === 'string' ? o : o.toString()).join(', ');
+  const corsOriginsStr = appConfig.cors.origin === '*' 
+    ? '*' 
+    : Array.isArray(appConfig.cors.origin) 
+      ? appConfig.cors.origin.map(o => typeof o === 'string' ? o : o.toString()).join(', ')
+      : String(appConfig.cors.origin);
   console.log(`CORS Origins: ${corsOriginsStr}`);
   console.log(`JWT Secret: ${appConfig.security.jwtSecret ? 'Set' : 'Not Set'}`);
   console.log(`Access locally: http://localhost:${PORT}`);
-  console.log(`Access from network: http://192.168.100.72:${PORT}`);
+  console.log(`Access from network: http://0.0.0.0:${PORT} (all interfaces)`);
   console.log(`Video uploads: http://localhost:${PORT}/uploads/videos/`);
   console.log(`Original videos: http://localhost:${PORT}/api/videos/:id/original`);
   console.log(`Presentations: http://localhost:${PORT}/api/presentations`);

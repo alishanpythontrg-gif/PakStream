@@ -80,7 +80,7 @@ const ScheduledPremiere: React.FC<ScheduledPremiereProps> = ({ premiere, onClose
     if (!premiere.video?.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${premiere.video?._id}/hls/${premiere.video?.processedFiles.poster}`;
+    return premiereService.getPosterUrl(premiere.video);
   };
 
   return (

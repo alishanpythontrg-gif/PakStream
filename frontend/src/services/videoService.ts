@@ -1,6 +1,5 @@
 import { Video, VideoUploadData, VideoResponse, VideosResponse, VideoStatus } from '../types/video';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, getBaseUrl } from '../config/api';
 
 class VideoService {
   private async request<T>(
@@ -111,7 +110,8 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${variant.playlist}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/videos/processed/${video._id}/hls/${variant.playlist}`;
   }
 
   getMasterPlaylistUrl(video: Video): string {
@@ -119,7 +119,8 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.hls.masterPlaylist}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.hls.masterPlaylist}`;
   }
 
   getThumbnailUrl(video: Video, index: number = 0): string {
@@ -127,7 +128,8 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.thumbnails[index]}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.thumbnails[index]}`;
   }
 
   getPosterUrl(video: Video): string {
@@ -135,7 +137,8 @@ class VideoService {
       return this.getThumbnailUrl(video, 0);
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
   }
 
   getOriginalVideoUrl(video: Video): string {
@@ -143,7 +146,7 @@ class VideoService {
       return '';
     }
 
-    return `${API_BASE_URL.replace('/api', '')}/api/videos/${video._id}/original`;
+    return `${API_BASE_URL}/videos/${video._id}/original`;
   }
 
   /**

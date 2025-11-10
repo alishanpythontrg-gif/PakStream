@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Presentation, PresentationSlide } from '../../types/presentation';
 import presentationService from '../../services/presentationService';
+import { getBaseUrl } from '../../config/api';
 
 interface PresentationViewerProps {
   presentation: Presentation;
@@ -103,7 +104,8 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ presentation, o
     slidesToPreload.forEach(index => {
       if (!preloadedSlides.has(index)) {
         const img = new Image();
-        img.src = `${process.env.REACT_APP_API_URL?.replace('/api', '')}/uploads/${slides[index].imagePath}`;
+        const baseUrl = getBaseUrl();
+        img.src = `${baseUrl}/uploads/${slides[index].imagePath}`;
         img.onload = () => {
           setPreloadedSlides(prev => new Set(prev).add(index));
         };
@@ -210,7 +212,10 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ presentation, o
   };
 
   const slideUrl = slides[currentSlide] 
-    ? `${process.env.REACT_APP_API_URL?.replace('/api', '')}/uploads/${slides[currentSlide].imagePath}`
+    ? (() => {
+        const baseUrl = getBaseUrl();
+        return `${baseUrl}/uploads/${slides[currentSlide].imagePath}`;
+      })()
     : '';
 
   if (isLoading) {
@@ -327,7 +332,10 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ presentation, o
                     title={`Go to slide ${index + 1}`}
                   >
                     <img
-                      src={`${process.env.REACT_APP_API_URL?.replace('/api', '')}/uploads/${slide.thumbnailPath || slide.imagePath}`}
+                      src={(() => {
+                        const baseUrl = getBaseUrl();
+                        return `${baseUrl}/uploads/${slide.thumbnailPath || slide.imagePath}`;
+                      })()}
                       alt={`Slide ${index + 1}`}
                       className="w-16 h-12 object-cover"
                     />

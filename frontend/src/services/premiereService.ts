@@ -1,6 +1,5 @@
 import { Premiere, PremiereResponse, PremieresResponse, CreatePremiereData } from '../types/premiere';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, getBaseUrl } from '../config/api';
 
 class PremiereService {
   private async request<T>(
@@ -153,7 +152,8 @@ class PremiereService {
     if (!video.processedFiles?.poster) {
       return '';
     }
-    return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}/uploads/videos/processed/${video._id}/hls/${video.processedFiles.poster}`;
   }
 }
 

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { SOCKET_URL } from '../config/api';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -17,7 +18,7 @@ class SocketService {
     }
 
     console.log('Creating new Socket.IO connection...');
-    this.socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
+    this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
