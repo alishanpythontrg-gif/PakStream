@@ -89,7 +89,18 @@ const getUserById = async (req, res) => {
 // Create new user (admin only)
 const createUser = async (req, res) => {
   try {
-    const { username, email, password, role = 'user', profile, preferences } = req.body;
+    const { 
+      username, 
+      email, 
+      password, 
+      role = 'user', 
+      profile, 
+      preferences,
+      organization,
+      dateOfEnrollment,
+      contactNumber,
+      address
+    } = req.body;
     
     // Validation
     if (!username || !email || !password) {
@@ -121,14 +132,22 @@ const createUser = async (req, res) => {
     }
     
     // Create new user
-    const user = new User({
+    const userData = {
       username,
       email,
       password,
       role,
       profile: profile || {},
       preferences: preferences || {}
-    });
+    };
+
+    // Add new fields if provided
+    if (organization) userData.organization = organization;
+    if (dateOfEnrollment) userData.dateOfEnrollment = new Date(dateOfEnrollment);
+    if (contactNumber) userData.contactNumber = contactNumber;
+    if (address) userData.address = address;
+    
+    const user = new User(userData);
     
     await user.save();
     
@@ -150,7 +169,18 @@ const createUser = async (req, res) => {
 // Update user (admin only)
 const updateUser = async (req, res) => {
   try {
-    const { username, email, role, profile, preferences, isActive } = req.body;
+    const { 
+      username, 
+      email, 
+      role, 
+      profile, 
+      preferences, 
+      isActive,
+      organization,
+      dateOfEnrollment,
+      contactNumber,
+      address
+    } = req.body;
     
     const user = await User.findById(req.params.id);
     
@@ -168,6 +198,14 @@ const updateUser = async (req, res) => {
     if (profile) user.profile = { ...user.profile, ...profile };
     if (preferences) user.preferences = { ...user.preferences, ...preferences };
     if (typeof isActive === 'boolean') user.isActive = isActive;
+    
+    // Update new fields
+    if (organization !== undefined) user.organization = organization || null;
+    if (dateOfEnrollment !== undefined) {
+      user.dateOfEnrollment = dateOfEnrollment ? new Date(dateOfEnrollment) : null;
+    }
+    if (contactNumber !== undefined) user.contactNumber = contactNumber || null;
+    if (address !== undefined) user.address = address || null;
     
     await user.save();
     

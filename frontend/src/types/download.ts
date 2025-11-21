@@ -4,6 +4,13 @@ export interface VideoDownload {
     _id: string;
     username: string;
     email: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    organization?: string;
+    contactNumber?: string;
+    address?: string;
   };
   video: {
     _id: string;

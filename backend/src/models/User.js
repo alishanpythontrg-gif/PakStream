@@ -37,6 +37,22 @@ const userSchema = new mongoose.Schema({
     avatar: String,
     bio: String
   },
+  organization: {
+    type: String,
+    trim: true
+  },
+  dateOfEnrollment: {
+    type: Date,
+    default: Date.now
+  },
+  contactNumber: {
+    type: String,
+    trim: true
+  },
+  address: {
+    type: String,
+    trim: true
+  },
   preferences: {
     theme: {
       type: String,

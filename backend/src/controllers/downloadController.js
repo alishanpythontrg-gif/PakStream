@@ -158,7 +158,7 @@ const getAllDownloads = async (req, res) => {
     }
 
     const downloads = await VideoDownload.find(query)
-      .populate('user', 'username email')
+      .populate('user', 'username email profile organization contactNumber address')
       .populate('video', 'title')
       .sort(sortOptions)
       .skip(skip)
@@ -196,6 +196,7 @@ const getUserDownloads = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const downloads = await VideoDownload.find({ user: userId })
+      .populate('user', 'username email profile organization contactNumber address')
       .populate('video', 'title description')
       .sort({ downloadedAt: -1 })
       .skip(skip)
@@ -232,7 +233,7 @@ const getVideoDownloads = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const downloads = await VideoDownload.find({ video: videoId })
-      .populate('user', 'username email')
+      .populate('user', 'username email profile organization contactNumber address')
       .sort({ downloadedAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));

@@ -18,7 +18,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
       firstName: user.profile?.firstName || '',
       lastName: user.profile?.lastName || '',
       bio: user.profile?.bio || ''
-    }
+    },
+    organization: user.organization || '',
+    dateOfEnrollment: user.dateOfEnrollment ? new Date(user.dateOfEnrollment).toISOString().split('T')[0] : '',
+    contactNumber: user.contactNumber || '',
+    address: user.address || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,7 +38,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
           firstName: user.profile?.firstName || '',
           lastName: user.profile?.lastName || '',
           bio: user.profile?.bio || ''
-        }
+        },
+        organization: user.organization || '',
+        dateOfEnrollment: user.dateOfEnrollment ? new Date(user.dateOfEnrollment).toISOString().split('T')[0] : '',
+        contactNumber: user.contactNumber || '',
+        address: user.address || ''
       });
     }
   }, [isOpen, user]);
@@ -180,6 +188,61 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
               rows={3}
               className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white text-sm font-medium mb-2">
+                Organization
+              </label>
+              <input
+                type="text"
+                value={formData.organization || ''}
+                onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
+                placeholder="Organization name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-white text-sm font-medium mb-2">
+                Date of Enrollment
+              </label>
+              <input
+                type="date"
+                value={formData.dateOfEnrollment || ''}
+                onChange={(e) => setFormData({ ...formData, dateOfEnrollment: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white text-sm font-medium mb-2">
+                Contact Number
+              </label>
+              <input
+                type="tel"
+                value={formData.contactNumber || ''}
+                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
+                placeholder="Phone number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-white text-sm font-medium mb-2">
+                Address/Location
+              </label>
+              <textarea
+                value={formData.address || ''}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-netflix-red"
+                placeholder="Full address or location"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-4 mt-6">

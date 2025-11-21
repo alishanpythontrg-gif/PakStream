@@ -226,3 +226,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 **Last Updated:** January 2025
 
+
+
+
+In user management while creating new user i want to add some more information or fields required for registration. 1. oraganization, its date of enrollement. and contact number, address/location.. same is updated in user management dashboard section where these fields should be displayed as well. secondly these new fields and name of the user should be displayed in the download management section where to more filed will be shown like name, organzation, location and contact number

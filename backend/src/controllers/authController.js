@@ -11,7 +11,16 @@ const generateToken = (userId) => {
 // Register new user
 const register = async (req, res) => {
   try {
-    const { username, email, password, role = 'user' } = req.body;
+    const { 
+      username, 
+      email, 
+      password, 
+      role = 'user',
+      organization,
+      dateOfEnrollment,
+      contactNumber,
+      address
+    } = req.body;
 
     // Validation
     if (!username || !email || !password) {
@@ -43,12 +52,20 @@ const register = async (req, res) => {
     }
 
     // Create new user
-    const user = new User({
+    const userData = {
       username,
       email,
       password,
       role
-    });
+    };
+
+    // Add optional fields if provided
+    if (organization) userData.organization = organization;
+    if (dateOfEnrollment) userData.dateOfEnrollment = new Date(dateOfEnrollment);
+    if (contactNumber) userData.contactNumber = contactNumber;
+    if (address) userData.address = address;
+
+    const user = new User(userData);
 
     await user.save();
 

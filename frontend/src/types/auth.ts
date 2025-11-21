@@ -36,6 +36,10 @@ export interface RegisterCredentials {
   username: string;
   email: string;
   password: string;
+  organization?: string;
+  dateOfEnrollment?: string;
+  contactNumber?: string;
+  address?: string;
 }
 
 export interface AdminRegisterCredentials {

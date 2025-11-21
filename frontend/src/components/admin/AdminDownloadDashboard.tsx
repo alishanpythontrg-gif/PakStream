@@ -231,7 +231,16 @@ const AdminDownloadDashboard: React.FC = () => {
                       className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-white"
                       onClick={() => handleSort('user')}
                     >
-                      User {sortBy === 'user' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      Name {sortBy === 'user' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
+                      Organization
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
+                      Location
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
+                      Contact Number
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-white"
@@ -251,24 +260,45 @@ const AdminDownloadDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {downloads.map((download) => (
-                    <tr key={download._id} className="hover:bg-gray-800 transition-colors">
-                      <td className="px-4 py-3 text-sm text-white">
-                        <div className="font-medium">{download.user.username}</div>
-                        <div className="text-xs text-gray-400">{download.user.email}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-white">
-                        <div className="font-medium">{download.video.title}</div>
-                        <div className="text-xs text-gray-400">ID: {download.video._id}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-300">
-                        {formatDate(download.downloadedAt)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-400">
-                        {download.ipAddress || 'N/A'}
-                      </td>
-                    </tr>
-                  ))}
+                  {downloads.map((download) => {
+                    const fullName = download.user.profile?.firstName && download.user.profile?.lastName
+                      ? `${download.user.profile.firstName} ${download.user.profile.lastName}`
+                      : download.user.username;
+                    
+                    return (
+                      <tr key={download._id} className="hover:bg-gray-800 transition-colors">
+                        <td className="px-4 py-3 text-sm text-white">
+                          <div className="font-medium">{fullName}</div>
+                          <div className="text-xs text-gray-400">{download.user.email}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-300">
+                          {download.user.organization || <span className="text-gray-500">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-300 max-w-xs">
+                          {download.user.address ? (
+                            <div className="truncate" title={download.user.address}>
+                              {download.user.address}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-300">
+                          {download.user.contactNumber || <span className="text-gray-500">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white">
+                          <div className="font-medium">{download.video.title}</div>
+                          <div className="text-xs text-gray-400">ID: {download.video._id}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-300">
+                          {formatDate(download.downloadedAt)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-400">
+                          {download.ipAddress || 'N/A'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

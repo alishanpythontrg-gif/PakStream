@@ -10,6 +10,10 @@ export interface User {
     avatar?: string;
     bio?: string;
   };
+  organization?: string;
+  dateOfEnrollment?: string;
+  contactNumber?: string;
+  address?: string;
   preferences?: {
     theme?: string;
     language?: string;
@@ -28,6 +32,10 @@ export interface CreateUserData {
     lastName?: string;
     bio?: string;
   };
+  organization?: string;
+  dateOfEnrollment?: string;
+  contactNumber?: string;
+  address?: string;
   preferences?: {
     theme?: string;
     language?: string;
@@ -43,6 +51,10 @@ export interface UpdateUserData {
     lastName?: string;
     bio?: string;
   };
+  organization?: string;
+  dateOfEnrollment?: string;
+  contactNumber?: string;
+  address?: string;
   preferences?: {
     theme?: string;
     language?: string;

@@ -185,6 +185,10 @@ const AdminUserManagement: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Organization</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date of Enrollment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
@@ -210,6 +214,26 @@ const AdminUserManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-300">{user.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      {user.organization || <span className="text-gray-500">-</span>}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300 text-sm">
+                      {user.dateOfEnrollment 
+                        ? new Date(user.dateOfEnrollment).toLocaleDateString() 
+                        : <span className="text-gray-500">-</span>}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      {user.contactNumber || <span className="text-gray-500">-</span>}
+                    </td>
+                    <td className="px-6 py-4 text-gray-300 max-w-xs">
+                      {user.address ? (
+                        <div className="truncate" title={user.address}>
+                          {user.address}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded text-xs ${
                         user.role === 'admin' 
