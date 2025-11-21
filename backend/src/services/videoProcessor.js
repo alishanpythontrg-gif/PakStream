@@ -1,10 +1,34 @@
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
 const path = require('path');
 const fs = require('fs').promises;
+const { execSync } = require('child_process');
+
+// Get FFmpeg path from environment or system PATH
+function getFfmpegPath() {
+  // Check environment variable first
+  if (process.env.FFMPEG_PATH) {
+    return process.env.FFMPEG_PATH;
+  }
+  
+  // Try to find ffmpeg in system PATH
+  try {
+    const ffmpegPath = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
+    if (ffmpegPath) {
+      return ffmpegPath;
+    }
+  } catch (error) {
+    // FFmpeg not found in PATH, will use default
+    console.warn('FFmpeg not found in PATH, using default');
+  }
+  
+  // Default to 'ffmpeg' (assumes it's in PATH)
+  return 'ffmpeg';
+}
 
 // Set FFmpeg path
-ffmpeg.setFfmpegPath(ffmpegStatic);
+const ffmpegPath = getFfmpegPath();
+console.log(`Using FFmpeg at: ${ffmpegPath}`);
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 class VideoProcessor {
   constructor() {
