@@ -122,12 +122,41 @@ app.use('/uploads/presentations', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, '../uploads/presentations')));
 
+app.use('/uploads/documents', (req, res, next) => {
+  // Set CORS headers for document files using configured origins
+  const origin = req.headers.origin;
+  const corsOrigin = appConfig.cors.origin;
+  
+  if (corsOrigin === '*') {
+    // Allow all origins
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } else if (origin && isOriginAllowed(origin, corsOrigin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } else if (Array.isArray(corsOrigin) && corsOrigin.length > 0) {
+    // Find first string origin (not regex) as fallback
+    const stringOrigin = corsOrigin.find(o => typeof o === 'string');
+    if (stringOrigin) {
+      res.header('Access-Control-Allow-Origin', stringOrigin);
+    }
+  }
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static(path.join(__dirname, '../uploads/documents')));
+
 // API routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/user'));
 app.use('/api/videos', require('./routes/video'));
 app.use('/api/premieres', require('./routes/premiere'));
 app.use('/api/presentations', require('./routes/presentation'));
+app.use('/api/documents', require('./routes/document'));
 app.use('/api/downloads', require('./routes/download'));
 
 // 404 handler

@@ -2,27 +2,34 @@ import React, { useState, useEffect } from 'react';
 import HeroSection from '../../components/HeroSection';
 import VideoGrid from '../../components/video/VideoGrid';
 import PresentationGrid from '../../components/presentation/PresentationGrid';
+import DocumentGrid from '../../components/document/DocumentGrid';
 import VideoPlayer from '../../components/video/VideoPlayer';
 import PresentationViewer from '../../components/presentation/PresentationViewer';
+import DocumentViewer from '../../components/document/DocumentViewer';
 import LivePremiere from '../../components/premiere/LivePremiere';
 import ScheduledPremiere from '../../components/premiere/ScheduledPremiere';
 import PremiereGrid from '../../components/premiere/PremiereGrid';
 import VideoProcessingStatus from '../../components/video/VideoProcessingStatus';
 import videoService from '../../services/videoService';
 import presentationService from '../../services/presentationService';
+import documentService from '../../services/documentService';
 import premiereService from '../../services/premiereService';
 import { Video } from '../../types/video';
 import { Presentation } from '../../types/presentation';
+import { Document } from '../../types/document';
 import { Premiere } from '../../types/premiere';
 
 const UserHomePage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [presentations, setPresentations] = useState<Presentation[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [selectedPresentation, setSelectedPresentation] = useState<Presentation | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [showPresentationViewer, setShowPresentationViewer] = useState(false);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [activePremiere, setActivePremiere] = useState<Premiere | null>(null);
   const [showPremiere, setShowPremiere] = useState(false);
   const [upcomingPremieres, setUpcomingPremieres] = useState<Premiere[]>([]);
@@ -41,6 +48,7 @@ const UserHomePage: React.FC = () => {
       await Promise.all([
         fetchVideos(),
         fetchPresentations(),
+        fetchDocuments(),
         checkActivePremiere(),
         fetchUpcomingPremieres()
       ]);
@@ -79,6 +87,15 @@ const UserHomePage: React.FC = () => {
       setPresentations(response.presentations);
     } catch (error) {
       console.error('Failed to fetch presentations:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await documentService.getDocuments({ limit: 12 });
+      setDocuments(response.documents);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
     }
   };
 
@@ -165,6 +182,11 @@ const UserHomePage: React.FC = () => {
     setShowPresentationViewer(true);
   };
 
+  const handleDocumentClick = (document: Document) => {
+    setSelectedDocument(document);
+    setShowDocumentViewer(true);
+  };
+
   const handleCloseVideoPlayer = () => {
     setShowVideoPlayer(false);
     setSelectedVideo(null);
@@ -173,6 +195,11 @@ const UserHomePage: React.FC = () => {
   const handleClosePresentationViewer = () => {
     setShowPresentationViewer(false);
     setSelectedPresentation(null);
+  };
+
+  const handleCloseDocumentViewer = () => {
+    setShowDocumentViewer(false);
+    setSelectedDocument(null);
   };
 
   const handleClosePremiere = () => {
@@ -247,6 +274,22 @@ const UserHomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Documents Section */}
+      <section id="documents" className="py-10">
+        <div className="container mx-auto px-6">
+          <div className="mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-4 tracking-tight">
+              Documents
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-accent to-transparent rounded-full"></div>
+          </div>
+          <DocumentGrid 
+            documents={documents} 
+            onDocumentClick={handleDocumentClick}
+          />
+        </div>
+      </section>
+
       {/* Premieres Section */}
       <section id="premieres" className="py-10">
         <div className="container mx-auto px-6">
@@ -281,6 +324,14 @@ const UserHomePage: React.FC = () => {
         <PresentationViewer
           presentation={selectedPresentation}
           onClose={handleClosePresentationViewer}
+        />
+      )}
+
+      {/* Document Viewer Modal */}
+      {showDocumentViewer && selectedDocument && (
+        <DocumentViewer
+          document={selectedDocument}
+          onClose={handleCloseDocumentViewer}
         />
       )}
 

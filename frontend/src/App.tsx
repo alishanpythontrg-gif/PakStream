@@ -11,6 +11,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import VideoManagementPage from './pages/admin/VideoManagementPage';
 import PresentationManagementPage from './pages/admin/PresentationManagementPage';
+import DocumentManagementPage from './pages/admin/DocumentManagementPage';
 import PremiereManagementPage from './pages/admin/PremiereManagementPage';
 import LivePremiereControlPage from './pages/admin/LivePremiereControlPage';
 import DownloadManagementPage from './pages/admin/DownloadManagementPage';
@@ -68,6 +69,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute requireAdmin>
                 <PresentationManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/documents"
+            element={
+              <ProtectedRoute requireAdmin>
+                <DocumentManagementPage />
               </ProtectedRoute>
             }
           />
