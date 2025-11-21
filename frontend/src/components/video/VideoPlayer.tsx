@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } f
 import Hls from 'hls.js';
 import { Video } from '../../types/video';
 import videoService from '../../services/videoService';
+import downloadService from '../../services/downloadService';
+import { useAuth } from '../../hooks';
 
 interface VideoPlayerProps {
   video: Video;
@@ -49,6 +51,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializingRef = useRef(false);
   const retryCountRef = useRef(0);
@@ -58,6 +61,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   const playStartTrackedRef = useRef(false);
   const watch30TrackedRef = useRef(false);
   const currentVideoIdRef = useRef<string | null>(null);
+
+  // Auth hook for checking if user is logged in
+  const { user } = useAuth();
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -447,6 +453,24 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
     }
   };
 
+  // Handle download
+  const handleDownload = async () => {
+    if (!video || !video._id || video.status !== 'ready') {
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      await downloadService.downloadVideo(video._id);
+      // Download completed successfully
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(error instanceof Error ? error.message : 'Failed to download video');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Format time
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -630,6 +654,18 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Download button - only show if user is logged in and video is ready */}
+              {user && video.status === 'ready' && (
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="hover:text-gray-300 hover:scale-110 transition-transform text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isDownloading ? 'Downloading...' : 'Download video'}
+                >
+                  {isDownloading ? '⏳' : '⬇️'}
+                </button>
               )}
 
               <button 

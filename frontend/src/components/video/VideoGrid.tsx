@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Video } from '../../types/video';
 import videoService from '../../services/videoService';
+import downloadService from '../../services/downloadService';
+import { useAuth } from '../../hooks';
 
 interface VideoGridProps {
   videos: Video[];
@@ -17,6 +19,27 @@ const VideoGrid: React.FC<VideoGridProps> = ({
   onDeleteClick,
   showDeleteButton = false 
 }) => {
+  const { user } = useAuth();
+  const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null);
+
+  const handleDownload = async (e: React.MouseEvent, video: Video) => {
+    e.stopPropagation();
+    
+    if (!video || !video._id || video.status !== 'ready') {
+      return;
+    }
+
+    try {
+      setDownloadingVideoId(video._id);
+      await downloadService.downloadVideo(video._id);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(error instanceof Error ? error.message : 'Failed to download video');
+    } finally {
+      setDownloadingVideoId(null);
+    }
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -100,15 +123,37 @@ const VideoGrid: React.FC<VideoGridProps> = ({
             </div>
 
             {/* Play Button Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-30">
+            <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-30">
               <button
                 onClick={() => onVideoClick(video)}
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-3 rounded-full transition-colors"
+                title="Play video"
               >
                 <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
               </button>
+              
+              {/* Download Button - only show if user is logged in and video is ready */}
+              {user && video.status === 'ready' && (
+                <button
+                  onClick={(e) => handleDownload(e, video)}
+                  disabled={downloadingVideoId === video._id}
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 text-text-primary p-3 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={downloadingVideoId === video._id ? 'Downloading...' : 'Download video'}
+                >
+                  {downloadingVideoId === video._id ? (
+                    <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Delete Button (Admin only) */}

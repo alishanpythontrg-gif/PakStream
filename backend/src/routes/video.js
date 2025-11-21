@@ -12,7 +12,8 @@ const {
   deleteVideo,
   getVideoStatus,
   getQueueStatus,
-  trackVideoView
+  trackVideoView,
+  downloadVideo
 } = require('../controllers/videoController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
@@ -53,6 +54,9 @@ router.get('/queue/status', getQueueStatus); // Get processing queue status
 router.get('/:id', getVideoById);
 router.get('/:id/status', getVideoStatus);
 router.post('/:id/view', trackVideoView); // Track video view (public endpoint)
+
+// Protected download route (requires authentication)
+router.get('/:id/download', authenticateToken, downloadVideo);
 
 // Serve video files with range request support for seeking
 router.get('/:id/original', async (req, res) => {

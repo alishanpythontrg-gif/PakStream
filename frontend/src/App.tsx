@@ -13,6 +13,7 @@ import VideoManagementPage from './pages/admin/VideoManagementPage';
 import PresentationManagementPage from './pages/admin/PresentationManagementPage';
 import PremiereManagementPage from './pages/admin/PremiereManagementPage';
 import LivePremiereControlPage from './pages/admin/LivePremiereControlPage';
+import DownloadManagementPage from './pages/admin/DownloadManagementPage';
 import socketService from './services/socketService';
 import './index.css';
 
@@ -83,6 +84,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute requireAdmin>
                 <LivePremiereControlPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/downloads"
+            element={
+              <ProtectedRoute requireAdmin>
+                <DownloadManagementPage />
               </ProtectedRoute>
             }
           />

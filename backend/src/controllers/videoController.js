@@ -1,4 +1,5 @@
 const Video = require('../models/Video');
+const VideoDownload = require('../models/VideoDownload');
 const videoQueue = require('../services/videoQueue');
 const { addCdnUrlsToVideos, addCdnUrlsToVideo } = require('../utils/cdnUtils');
 const path = require('path');
@@ -400,6 +401,117 @@ const trackVideoView = async (req, res) => {
   }
 };
 
+// Download video (original file in best quality)
+const downloadVideo = async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    const userId = req.user.id;
+
+    // Find video
+    const video = await Video.findById(videoId);
+    
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      });
+    }
+
+    // Check if video is public and ready
+    if (!video.isPublic || video.status !== 'ready') {
+      return res.status(403).json({
+        success: false,
+        message: 'Video is not available for download'
+      });
+    }
+
+    // Check if original file exists
+    if (!video.originalFile || !video.originalFile.filename) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video file not found'
+      });
+    }
+
+    const filePath = path.join(__dirname, '../../uploads/videos/original', video.originalFile.filename);
+    
+    // Check if file exists
+    let stat;
+    try {
+      stat = await fs.stat(filePath);
+    } catch (error) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video file not found on server'
+      });
+    }
+
+    // Track download (async, don't wait for it)
+    VideoDownload.create({
+      user: userId,
+      video: videoId,
+      ipAddress: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('user-agent')
+    }).catch(err => {
+      console.error('Failed to track download:', err);
+      // Don't fail the download if tracking fails
+    });
+
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    // Generate safe filename for download
+    const safeTitle = video.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileExtension = path.extname(video.originalFile.filename);
+    const downloadFilename = `${safeTitle}${fileExtension}`;
+
+    if (range) {
+      // Parse range header for partial content
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+
+      // Create read stream for the requested range
+      const fsSync = require('fs');
+      const file = fsSync.createReadStream(filePath, { start, end });
+
+      // Set headers for partial content
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': video.originalFile.mimetype || 'video/mp4',
+        'Content-Disposition': `attachment; filename="${downloadFilename}"`,
+        'Cache-Control': 'no-cache'
+      });
+
+      file.pipe(res);
+    } else {
+      // No range requested, send entire file
+      const fsSync = require('fs');
+      const file = fsSync.createReadStream(filePath);
+
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': video.originalFile.mimetype || 'video/mp4',
+        'Accept-Ranges': 'bytes',
+        'Content-Disposition': `attachment; filename="${downloadFilename}"`,
+        'Cache-Control': 'no-cache'
+      });
+
+      file.pipe(res);
+    }
+  } catch (error) {
+    console.error('Error downloading video:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download video',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadVideo,
   getVideos,
@@ -410,5 +522,6 @@ module.exports = {
   deleteVideo,
   getVideoStatus,
   getQueueStatus,
-  trackVideoView
+  trackVideoView,
+  downloadVideo
 };
