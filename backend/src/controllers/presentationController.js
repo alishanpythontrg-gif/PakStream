@@ -1,7 +1,9 @@
 const Presentation = require('../models/Presentation');
 const PresentationProcessor = require('../services/presentationProcessor');
+const { calculateFileHash } = require('../services/hashService');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 const presentationProcessor = new PresentationProcessor();
 
@@ -15,6 +17,16 @@ const uploadPresentation = async (req, res) => {
     const { title, description, category = 'other', tags = [] } = req.body;
     const userId = req.user.id;
 
+    // Calculate SHA-256 hash of the uploaded file
+    let sha256Hash = null;
+    try {
+      sha256Hash = await calculateFileHash(req.file.path);
+      console.log(`Calculated SHA-256 hash for presentation: ${sha256Hash.substring(0, 16)}...`);
+    } catch (hashError) {
+      console.error('Error calculating file hash:', hashError);
+      // Don't fail upload if hash calculation fails, but log the error
+    }
+
     // Create presentation record
     const presentation = new Presentation({
       title,
@@ -27,7 +39,8 @@ const uploadPresentation = async (req, res) => {
         mimetype: req.file.mimetype
       },
       category,
-      tags: Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim())
+      tags: Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim()),
+      sha256Hash: sha256Hash
     });
 
     await presentation.save();
@@ -292,6 +305,128 @@ const updatePresentation = async (req, res) => {
   }
 };
 
+// Get presentation hash for manual verification
+const getPresentationHash = async (req, res) => {
+  try {
+    const presentation = await Presentation.findById(req.params.id);
+
+    if (!presentation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presentation not found'
+      });
+    }
+
+    if (!presentation.sha256Hash) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hash not available for this presentation. It may have been uploaded before hash calculation was implemented.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        presentationId: presentation._id,
+        title: presentation.title,
+        sha256Hash: presentation.sha256Hash,
+        uploadedAt: presentation.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting presentation hash:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get presentation hash',
+      error: error.message
+    });
+  }
+};
+
+// Verify presentation integrity
+const verifyPresentationIntegrity = async (req, res) => {
+  try {
+    const presentation = await Presentation.findById(req.params.id);
+
+    if (!presentation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presentation not found'
+      });
+    }
+
+    if (!presentation.sha256Hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hash not available for this presentation. It may have been uploaded before hash calculation was implemented.',
+        data: {
+          presentationId: presentation._id,
+          title: presentation.title,
+          canVerify: false
+        }
+      });
+    }
+
+    // Check if file was uploaded or hash string was provided
+    let providedHash = null;
+    
+    if (req.file) {
+      // File was uploaded, calculate its hash
+      try {
+        providedHash = await calculateFileHash(req.file.path);
+        // Clean up temporary file
+        await fs.unlink(req.file.path).catch(() => {
+          // Ignore cleanup errors
+        });
+      } catch (hashError) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to calculate hash of uploaded file',
+          error: hashError.message
+        });
+      }
+    } else if (req.body.hash) {
+      // Hash string was provided directly
+      providedHash = req.body.hash.toLowerCase().trim();
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either a presentation file or a hash string',
+        data: {
+          presentationId: presentation._id,
+          title: presentation.title
+        }
+      });
+    }
+
+    // Compare hashes
+    const storedHash = presentation.sha256Hash.toLowerCase().trim();
+    const matches = providedHash === storedHash;
+
+    res.json({
+      success: true,
+      data: {
+        presentationId: presentation._id,
+        title: presentation.title,
+        verified: matches,
+        providedHash: providedHash,
+        storedHash: storedHash,
+        message: matches 
+          ? 'Presentation integrity verified. The file matches the original.' 
+          : 'Presentation integrity check failed. The file does not match the original and may have been tampered with.',
+        verifiedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying presentation integrity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify presentation integrity',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadPresentation,
   getPresentations,
@@ -301,5 +436,7 @@ module.exports = {
   getPresentationThumbnail,
   getAdminPresentations,
   deletePresentation,
-  updatePresentation
+  updatePresentation,
+  getPresentationHash,
+  verifyPresentationIntegrity
 };

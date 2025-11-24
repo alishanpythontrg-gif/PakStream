@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Document, DocumentUploadData } from '../../types/document';
 import documentService from '../../services/documentService';
+import DocumentVerificationModal from './DocumentVerificationModal';
+import ProtectedRoute from '../ProtectedRoute';
 
 const AdminDocumentDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'documents' | 'verification'>('documents');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [documentToVerify, setDocumentToVerify] = useState<Document | null>(null);
+  const [verificationSearch, setVerificationSearch] = useState('');
 
   useEffect(() => {
     fetchDocuments();
@@ -82,6 +88,25 @@ const AdminDocumentDashboard: React.FC = () => {
     return colors[category as keyof typeof colors] || colors.other;
   };
 
+  const handleVerifyClick = (document: Document) => {
+    setDocumentToVerify(document);
+    setShowVerificationModal(true);
+  };
+
+  const handleCloseVerification = () => {
+    setShowVerificationModal(false);
+    setDocumentToVerify(null);
+  };
+
+  const filteredDocumentsForVerification = documents.filter(document => {
+    const searchLower = verificationSearch.toLowerCase();
+    return (
+      document.title.toLowerCase().includes(searchLower) ||
+      document.description.toLowerCase().includes(searchLower) ||
+      document._id.toLowerCase().includes(searchLower)
+    );
+  });
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -100,22 +125,58 @@ const AdminDocumentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Document Management</h2>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="px-4 py-2 bg-netflix-red hover:bg-red-700 text-white rounded-lg transition-colors flex items-center space-x-2"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-          </svg>
-          <span>Upload Document</span>
-        </button>
-      </div>
+    <ProtectedRoute requireAdmin>
+      <div className="min-h-screen bg-netflix-black pt-16">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Admin Document Management</h1>
+              <p className="text-gray-400">Administrators can manage and verify all documents</p>
+            </div>
+            {activeTab === 'documents' && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="px-4 py-2 bg-netflix-red hover:bg-red-700 text-white rounded-lg transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                <span>Upload Document</span>
+              </button>
+            )}
+          </div>
 
-      {/* Documents Table */}
+          {/* Tab Navigation */}
+          <div className="mb-6 border-b border-gray-700">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`px-6 py-3 font-medium text-sm transition-colors ${
+                  activeTab === 'documents'
+                    ? 'text-white border-b-2 border-netflix-red bg-transparent'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                📄 Documents
+              </button>
+              <button
+                onClick={() => setActiveTab('verification')}
+                className={`px-6 py-3 font-medium text-sm transition-colors ${
+                  activeTab === 'verification'
+                    ? 'text-white border-b-2 border-netflix-red bg-transparent'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                ✓ Verification
+              </button>
+            </div>
+          </div>
+
+          {/* Documents Tab Content */}
+          {activeTab === 'documents' && (
+            <div className="space-y-6">
+              {/* Documents Table */}
       <div className="bg-gray-800 rounded-lg overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-900">
@@ -175,16 +236,153 @@ const AdminDocumentDashboard: React.FC = () => {
         </table>
       </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <DocumentUploadModal
-          onClose={() => setShowUploadModal(false)}
-          onUpload={handleUpload}
-          uploading={uploading}
-          uploadProgress={uploadProgress}
-        />
-      )}
-    </div>
+              {/* Upload Modal */}
+              {showUploadModal && (
+                <DocumentUploadModal
+                  onClose={() => setShowUploadModal(false)}
+                  onUpload={handleUpload}
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Verification Tab Content */}
+          {activeTab === 'verification' && (
+            <div>
+              <div className="bg-blue-900 border border-blue-600 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-blue-400 text-xl mr-3">🔒</div>
+                  <div>
+                    <h3 className="text-blue-400 font-semibold">Document Integrity Verification</h3>
+                    <p className="text-blue-200 text-sm">
+                      Verify that downloaded document files match the original by comparing SHA-256 hashes. This helps detect tampering or corruption.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verification Search */}
+              <div className="bg-netflix-gray p-4 rounded-lg mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Search Documents for Verification
+                </label>
+                <input
+                  type="text"
+                  value={verificationSearch}
+                  onChange={(e) => setVerificationSearch(e.target.value)}
+                  placeholder="Search by title, description, or document ID..."
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
+                />
+              </div>
+
+              {/* Documents List for Verification */}
+              <div className="bg-netflix-gray rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Document</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Hash</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-netflix-gray divide-y divide-gray-700">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                            Loading documents...
+                          </td>
+                        </tr>
+                      ) : filteredDocumentsForVerification.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                            No documents found
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredDocumentsForVerification.map((document) => (
+                          <tr key={document._id} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-white">{document.title}</div>
+                              <div className="text-sm text-gray-400">{document.description.substring(0, 60)}...</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                document.status === 'ready' ? 'bg-green-900 text-green-200' :
+                                document.status === 'processing' ? 'bg-yellow-900 text-yellow-200' :
+                                document.status === 'error' ? 'bg-red-900 text-red-200' :
+                                'bg-gray-700 text-gray-300'
+                              }`}>
+                                {document.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {document.sha256Hash ? (
+                                <div className="text-xs font-mono text-gray-400 max-w-xs truncate" title={document.sha256Hash}>
+                                  {document.sha256Hash.substring(0, 16)}...
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">Not available</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              {document.status === 'ready' && document.sha256Hash ? (
+                                <button
+                                  onClick={() => handleVerifyClick(document)}
+                                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Verify
+                                </button>
+                              ) : (
+                                <span className="text-gray-500 text-xs">
+                                  {document.status !== 'ready' ? 'Not ready' : 'No hash'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Verification Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-white">{filteredDocumentsForVerification.length}</div>
+                  <div className="text-sm text-gray-400">Total Documents</div>
+                </div>
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-400">
+                    {filteredDocumentsForVerification.filter(d => d.sha256Hash).length}
+                  </div>
+                  <div className="text-sm text-gray-400">With Hash</div>
+                </div>
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-400">
+                    {filteredDocumentsForVerification.filter(d => d.status === 'ready' && d.sha256Hash).length}
+                  </div>
+                  <div className="text-sm text-gray-400">Ready to Verify</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Verification Modal */}
+          {documentToVerify && (
+            <DocumentVerificationModal
+              isOpen={showVerificationModal}
+              onClose={handleCloseVerification}
+              document={documentToVerify}
+            />
+          )}
+        </div>
+      </div>
+    </ProtectedRoute>
   );
 };
 

@@ -668,6 +668,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
                 </button>
               )}
 
+
               <button 
                 onClick={handleFullscreenToggle} 
                 className="hover:text-gray-300 hover:scale-110 transition-transform text-xl"

@@ -115,6 +115,99 @@ class PresentationService {
     const baseUrl = getBaseUrl();
     return `${baseUrl}/uploads/presentations/processed/${presentationId}/thumbnails/thumb_slide_${slideNumber}.jpg`;
   }
+
+  /**
+   * Get presentation hash for manual verification
+   * @param presentationId - Presentation ID
+   * @returns Presentation hash information
+   */
+  async getPresentationHash(presentationId: string): Promise<{
+    success: boolean;
+    data: {
+      presentationId: string;
+      title: string;
+      sha256Hash: string;
+      uploadedAt: string;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        presentationId: string;
+        title: string;
+        sha256Hash: string;
+        uploadedAt: string;
+      };
+    }>(`/presentations/${presentationId}/hash`);
+  }
+
+  /**
+   * Verify presentation integrity by uploading a file or providing a hash
+   * @param presentationId - Presentation ID
+   * @param file - Optional presentation file to verify
+   * @param hash - Optional hash string to verify
+   * @returns Verification result
+   */
+  async verifyPresentationIntegrity(
+    presentationId: string,
+    file?: File,
+    hash?: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      presentationId: string;
+      title: string;
+      verified: boolean;
+      providedHash: string;
+      storedHash: string;
+      message: string;
+      verifiedAt: string;
+    };
+  }> {
+    if (file) {
+      // Upload file for verification
+      const formData = new FormData();
+      formData.append('presentation', file);
+
+      return this.request<{
+        success: boolean;
+        data: {
+          presentationId: string;
+          title: string;
+          verified: boolean;
+          providedHash: string;
+          storedHash: string;
+          message: string;
+          verifiedAt: string;
+        };
+      }>(`/presentations/${presentationId}/verify`, {
+        method: 'POST',
+        body: formData,
+      });
+    } else if (hash) {
+      // Send hash string for verification
+      return this.request<{
+        success: boolean;
+        data: {
+          presentationId: string;
+          title: string;
+          verified: boolean;
+          providedHash: string;
+          storedHash: string;
+          message: string;
+          verifiedAt: string;
+        };
+      }>(`/presentations/${presentationId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hash }),
+      });
+    } else {
+      throw new Error('Either file or hash must be provided');
+    }
+  }
 }
 
 const presentationService = new PresentationService();

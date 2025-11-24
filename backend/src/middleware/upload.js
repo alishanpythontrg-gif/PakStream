@@ -7,6 +7,7 @@ const ensureUploadDirs = async () => {
   const dirs = [
     'uploads/videos/original',
     'uploads/videos/processed',
+    'uploads/videos/temp',
     'public/videos'
   ];
   
@@ -73,15 +74,6 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Multer configuration
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
-    files: 1 // Only one file at a time
-  }
-});
 
 // Error handling middleware
 const handleUploadError = (error, req, res, next) => {
@@ -112,7 +104,42 @@ const handleUploadError = (error, req, res, next) => {
   next(error);
 };
 
+// Multer instance for video uploads (for reuse)
+const multerInstance = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
+    files: 1 // Only one file at a time
+  }
+});
+
+// Multer configuration for verification (saves to temp directory)
+const verificationStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dest = 'uploads/videos/temp';
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const filename = `verify-${uniqueSuffix}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const verificationUpload = multer({
+  storage: verificationStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
+    files: 1 // Only one file at a time
+  }
+});
+
 module.exports = {
-  upload: upload.single('video'),
+  upload: multerInstance.single('video'),
+  multerInstance: multerInstance, // Export multer instance for reuse
+  verificationUpload: verificationUpload.single('video'), // Export verification upload middleware
   handleUploadError
 };

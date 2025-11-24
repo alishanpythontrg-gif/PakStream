@@ -261,6 +261,20 @@ const AdminDownloadDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {downloads.map((download) => {
+                    if (!download.user || !download.video) {
+                      return (
+                        <tr key={download._id} className="hover:bg-gray-800 transition-colors">
+                          <td colSpan={7} className="px-4 py-3 text-sm text-gray-500 italic text-center">
+                            {!download.user && !download.video 
+                              ? 'User and video deleted' 
+                              : !download.user 
+                              ? 'User deleted' 
+                              : 'Video deleted'}
+                          </td>
+                        </tr>
+                      );
+                    }
+
                     const fullName = download.user.profile?.firstName && download.user.profile?.lastName
                       ? `${download.user.profile.firstName} ${download.user.profile.lastName}`
                       : download.user.username;
@@ -287,8 +301,14 @@ const AdminDownloadDashboard: React.FC = () => {
                           {download.user.contactNumber || <span className="text-gray-500">-</span>}
                         </td>
                         <td className="px-4 py-3 text-sm text-white">
-                          <div className="font-medium">{download.video.title}</div>
-                          <div className="text-xs text-gray-400">ID: {download.video._id}</div>
+                          {download.video ? (
+                            <>
+                              <div className="font-medium">{download.video.title}</div>
+                              <div className="text-xs text-gray-400">ID: {download.video._id}</div>
+                            </>
+                          ) : (
+                            <div className="text-gray-500 italic">Video deleted</div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-300">
                           {formatDate(download.downloadedAt)}

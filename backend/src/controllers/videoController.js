@@ -2,6 +2,7 @@ const Video = require('../models/Video');
 const VideoDownload = require('../models/VideoDownload');
 const videoQueue = require('../services/videoQueue');
 const { addCdnUrlsToVideos, addCdnUrlsToVideo } = require('../utils/cdnUtils');
+const { calculateFileHash, calculateBufferHash } = require('../services/hashService');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -16,6 +17,16 @@ const uploadVideo = async (req, res) => {
 
     const { title, description, category, tags } = req.body;
     
+    // Calculate SHA-256 hash of the uploaded file
+    let sha256Hash = null;
+    try {
+      sha256Hash = await calculateFileHash(req.file.path);
+      console.log(`Calculated SHA-256 hash for video: ${sha256Hash.substring(0, 16)}...`);
+    } catch (hashError) {
+      console.error('Error calculating file hash:', hashError);
+      // Don't fail upload if hash calculation fails, but log the error
+    }
+    
     // Create video record
     const video = new Video({
       title,
@@ -29,6 +40,7 @@ const uploadVideo = async (req, res) => {
         size: req.file.size,
         mimetype: req.file.mimetype
       },
+      sha256Hash: sha256Hash,
       status: 'uploading'
     });
 
@@ -512,6 +524,128 @@ const downloadVideo = async (req, res) => {
   }
 };
 
+// Get video hash for manual verification
+const getVideoHash = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      });
+    }
+
+    if (!video.sha256Hash) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hash not available for this video. It may have been uploaded before hash calculation was implemented.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        videoId: video._id,
+        title: video.title,
+        sha256Hash: video.sha256Hash,
+        uploadedAt: video.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting video hash:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get video hash',
+      error: error.message
+    });
+  }
+};
+
+// Verify video integrity
+const verifyVideoIntegrity = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      });
+    }
+
+    if (!video.sha256Hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hash not available for this video. It may have been uploaded before hash calculation was implemented.',
+        data: {
+          videoId: video._id,
+          title: video.title,
+          canVerify: false
+        }
+      });
+    }
+
+    // Check if file was uploaded or hash string was provided
+    let providedHash = null;
+    
+    if (req.file) {
+      // File was uploaded, calculate its hash
+      try {
+        providedHash = await calculateFileHash(req.file.path);
+        // Clean up temporary file
+        await fs.unlink(req.file.path).catch(() => {
+          // Ignore cleanup errors
+        });
+      } catch (hashError) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to calculate hash of uploaded file',
+          error: hashError.message
+        });
+      }
+    } else if (req.body.hash) {
+      // Hash string was provided directly
+      providedHash = req.body.hash.toLowerCase().trim();
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either a video file or a hash string',
+        data: {
+          videoId: video._id,
+          title: video.title
+        }
+      });
+    }
+
+    // Compare hashes
+    const storedHash = video.sha256Hash.toLowerCase().trim();
+    const matches = providedHash === storedHash;
+
+    res.json({
+      success: true,
+      data: {
+        videoId: video._id,
+        title: video.title,
+        verified: matches,
+        providedHash: providedHash,
+        storedHash: storedHash,
+        message: matches 
+          ? 'Video integrity verified. The file matches the original.' 
+          : 'Video integrity check failed. The file does not match the original and may have been tampered with.',
+        verifiedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying video integrity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify video integrity',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadVideo,
   getVideos,
@@ -523,5 +657,7 @@ module.exports = {
   getVideoStatus,
   getQueueStatus,
   trackVideoView,
-  downloadVideo
+  downloadVideo,
+  getVideoHash,
+  verifyVideoIntegrity
 };

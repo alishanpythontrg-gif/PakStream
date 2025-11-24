@@ -36,6 +36,7 @@ export interface Video {
   category: 'movie' | 'tv-show' | 'documentary' | 'short-film' | 'other';
   isPublic: boolean;
   isFeatured: boolean;
+  sha256Hash?: string;
   createdAt: string;
   updatedAt: string;
 }

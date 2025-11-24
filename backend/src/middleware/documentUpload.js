@@ -6,8 +6,9 @@ const fs = require('fs');
 const uploadDir = path.join(__dirname, '../../uploads/documents');
 const originalDir = path.join(uploadDir, 'original');
 const processedDir = path.join(uploadDir, 'processed');
+const tempDir = path.join(uploadDir, 'temp');
 
-[uploadDir, originalDir, processedDir].forEach(dir => {
+[uploadDir, originalDir, processedDir, tempDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -52,5 +53,27 @@ const upload = multer({
   }
 });
 
+// Multer configuration for verification (saves to temp directory)
+const verificationStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, tempDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const filename = `verify-${uniqueSuffix}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const verificationUpload = multer({
+  storage: verificationStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
+
 module.exports = upload;
+module.exports.verificationUpload = verificationUpload.single('document');
 

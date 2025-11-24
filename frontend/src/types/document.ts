@@ -22,6 +22,7 @@ export interface Document {
   tags: string[];
   isPublic: boolean;
   thumbnail: string | null;
+  sha256Hash?: string;
   createdAt: string;
   updatedAt: string;
 }

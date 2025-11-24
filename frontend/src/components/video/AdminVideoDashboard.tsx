@@ -3,9 +3,11 @@ import { Video } from '../../types/video';
 import videoService from '../../services/videoService';
 import VideoGrid from './VideoGrid';
 import VideoUploadModal from './VideoUploadModal';
+import VideoVerificationModal from './VideoVerificationModal';
 import ProtectedRoute from '../ProtectedRoute';
 
 const AdminVideoDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'videos' | 'verification'>('videos');
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -18,6 +20,9 @@ const AdminVideoDashboard: React.FC = () => {
     category: '',
     search: ''
   });
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [videoToVerify, setVideoToVerify] = useState<Video | null>(null);
+  const [verificationSearch, setVerificationSearch] = useState('');
 
   useEffect(() => {
     fetchVideos();
@@ -102,6 +107,26 @@ const AdminVideoDashboard: React.FC = () => {
 
   const stats = getStats();
 
+  const handleVerifyClick = (video: Video) => {
+    setVideoToVerify(video);
+    setShowVerificationModal(true);
+  };
+
+  const handleCloseVerification = () => {
+    setShowVerificationModal(false);
+    setVideoToVerify(null);
+  };
+
+  const filteredVideosForVerification = videos.filter(video => {
+    if (!verificationSearch.trim()) return true;
+    const searchLower = verificationSearch.toLowerCase();
+    return (
+      video.title.toLowerCase().includes(searchLower) ||
+      video.description.toLowerCase().includes(searchLower) ||
+      video._id.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <ProtectedRoute requireAdmin>
       <div className="min-h-screen bg-netflix-black pt-16">
@@ -110,30 +135,61 @@ const AdminVideoDashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">Admin Video Management</h1>
-              <p className="text-gray-400">Administrators can manage and delete all videos</p>
+              <p className="text-gray-400">Administrators can manage and verify all videos</p>
             </div>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="btn-primary"
-            >
-              Upload Video
-            </button>
+            {activeTab === 'videos' && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="btn-primary"
+              >
+                Upload Video
+              </button>
+            )}
           </div>
 
-          {/* Admin Notice */}
-          <div className="bg-yellow-900 border border-yellow-600 rounded-lg p-4 mb-6">
-            <div className="flex items-center">
-              <div className="text-yellow-400 text-xl mr-3">⚠️</div>
-              <div>
-                <h3 className="text-yellow-400 font-semibold">Administrator Only</h3>
-                <p className="text-yellow-200 text-sm">
-                  Only users with administrator role can delete videos. Regular users cannot delete any videos, including their own.
-                </p>
+          {/* Tab Navigation */}
+          <div className="mb-6 border-b border-gray-700">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('videos')}
+                className={`px-6 py-3 font-medium text-sm transition-colors ${
+                  activeTab === 'videos'
+                    ? 'text-white border-b-2 border-netflix-red bg-transparent'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                📹 Videos
+              </button>
+              <button
+                onClick={() => setActiveTab('verification')}
+                className={`px-6 py-3 font-medium text-sm transition-colors ${
+                  activeTab === 'verification'
+                    ? 'text-white border-b-2 border-netflix-red bg-transparent'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                ✓ Verification
+              </button>
+            </div>
+          </div>
+
+          {/* Videos Tab Content */}
+          {activeTab === 'videos' && (
+            <>
+              {/* Admin Notice */}
+              <div className="bg-yellow-900 border border-yellow-600 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-yellow-400 text-xl mr-3">⚠️</div>
+                  <div>
+                    <h3 className="text-yellow-400 font-semibold">Administrator Only</h3>
+                    <p className="text-yellow-200 text-sm">
+                      Only users with administrator role can delete videos. Regular users cannot delete any videos, including their own.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Stats Cards */}
+              {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <div className="bg-netflix-gray p-4 rounded-lg">
               <div className="text-2xl font-bold text-white">{stats.total}</div>
@@ -336,6 +392,141 @@ const AdminVideoDashboard: React.FC = () => {
             onClose={() => setShowUploadModal(false)}
             onUploadSuccess={handleUploadSuccess}
           />
+            </>
+          )}
+
+          {/* Verification Tab Content */}
+          {activeTab === 'verification' && (
+            <div>
+              <div className="bg-blue-900 border border-blue-600 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-blue-400 text-xl mr-3">🔒</div>
+                  <div>
+                    <h3 className="text-blue-400 font-semibold">Video Integrity Verification</h3>
+                    <p className="text-blue-200 text-sm">
+                      Verify that downloaded video files match the original by comparing SHA-256 hashes. This helps detect tampering or corruption.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verification Search */}
+              <div className="bg-netflix-gray p-4 rounded-lg mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Search Videos for Verification
+                </label>
+                <input
+                  type="text"
+                  value={verificationSearch}
+                  onChange={(e) => setVerificationSearch(e.target.value)}
+                  placeholder="Search by title, description, or video ID..."
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-netflix-red"
+                />
+              </div>
+
+              {/* Videos List for Verification */}
+              <div className="bg-netflix-gray rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Video</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Hash</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-netflix-gray divide-y divide-gray-700">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                            Loading videos...
+                          </td>
+                        </tr>
+                      ) : filteredVideosForVerification.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                            No videos found
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredVideosForVerification.map((video) => (
+                          <tr key={video._id} className="hover:bg-gray-800">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-white">{video.title}</div>
+                              <div className="text-sm text-gray-400">{video.description.substring(0, 60)}...</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                video.status === 'ready' ? 'bg-green-900 text-green-200' :
+                                video.status === 'processing' ? 'bg-yellow-900 text-yellow-200' :
+                                video.status === 'error' ? 'bg-red-900 text-red-200' :
+                                'bg-gray-700 text-gray-300'
+                              }`}>
+                                {video.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {video.sha256Hash ? (
+                                <div className="text-xs font-mono text-gray-400 max-w-xs truncate" title={video.sha256Hash}>
+                                  {video.sha256Hash.substring(0, 16)}...
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">Not available</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              {video.status === 'ready' && video.sha256Hash ? (
+                                <button
+                                  onClick={() => handleVerifyClick(video)}
+                                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Verify
+                                </button>
+                              ) : (
+                                <span className="text-gray-500 text-xs">
+                                  {video.status !== 'ready' ? 'Not ready' : 'No hash'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Verification Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-white">{filteredVideosForVerification.length}</div>
+                  <div className="text-sm text-gray-400">Total Videos</div>
+                </div>
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-400">
+                    {filteredVideosForVerification.filter(v => v.sha256Hash).length}
+                  </div>
+                  <div className="text-sm text-gray-400">With Hash</div>
+                </div>
+                <div className="bg-netflix-gray p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-400">
+                    {filteredVideosForVerification.filter(v => v.status === 'ready' && v.sha256Hash).length}
+                  </div>
+                  <div className="text-sm text-gray-400">Ready to Verify</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Verification Modal */}
+          {videoToVerify && (
+            <VideoVerificationModal
+              isOpen={showVerificationModal}
+              onClose={handleCloseVerification}
+              video={videoToVerify}
+            />
+          )}
         </div>
       </div>
     </ProtectedRoute>

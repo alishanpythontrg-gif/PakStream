@@ -9,10 +9,13 @@ const {
   getPresentationThumbnail,
   getAdminPresentations,
   deletePresentation,
-  updatePresentation
+  updatePresentation,
+  getPresentationHash,
+  verifyPresentationIntegrity
 } = require('../controllers/presentationController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const upload = require('../middleware/presentationUpload');
+const { verificationUpload } = require('../middleware/presentationUpload');
 
 // Public routes
 router.get('/', getPresentations);
@@ -20,6 +23,8 @@ router.get('/:id', getPresentationById);
 router.get('/:id/slides', getPresentationSlides);
 router.get('/:id/image/:slideNumber', getPresentationImage);
 router.get('/:id/thumbnail', getPresentationThumbnail);
+router.get('/:id/hash', getPresentationHash); // Get presentation hash for manual verification
+router.post('/:id/verify', verificationUpload, verifyPresentationIntegrity); // Verify presentation integrity (public endpoint)
 
 // Admin routes
 router.post('/upload', authenticateToken, requireAdmin, upload.single('presentation'), uploadPresentation);

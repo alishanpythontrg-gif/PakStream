@@ -13,10 +13,12 @@ const {
   getVideoStatus,
   getQueueStatus,
   trackVideoView,
-  downloadVideo
+  downloadVideo,
+  getVideoHash,
+  verifyVideoIntegrity
 } = require('../controllers/videoController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
-const { upload, handleUploadError } = require('../middleware/upload');
+const { upload, verificationUpload, handleUploadError } = require('../middleware/upload');
 const storageService = require('../services/storageService');
 const { isMinIOEnabled } = require('../config/storage');
 
@@ -78,7 +80,9 @@ router.get('/featured/list', getFeaturedVideos); // Must come before /:id route
 router.get('/queue/status', getQueueStatus); // Get processing queue status
 router.get('/:id', getVideoById);
 router.get('/:id/status', getVideoStatus);
+router.get('/:id/hash', getVideoHash); // Get video hash for manual verification
 router.post('/:id/view', trackVideoView); // Track video view (public endpoint)
+router.post('/:id/verify', verificationUpload, handleUploadError, verifyVideoIntegrity); // Verify video integrity (public endpoint)
 
 // Protected download route (requires authentication)
 router.get('/:id/download', authenticateToken, downloadVideo);

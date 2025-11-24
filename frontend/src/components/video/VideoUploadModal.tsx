@@ -95,25 +95,22 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       setError(null);
       setUploadProgress(0);
 
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      const response = await videoService.uploadVideo(selectedFile, uploadData);
+      // Upload with real progress tracking
+      const response = await videoService.uploadVideo(
+        selectedFile, 
+        uploadData,
+        (progress) => {
+          // Update progress as upload progresses
+          setUploadProgress(progress);
+        }
+      );
       
       if (response.success && response.data.video._id) {
         setProcessingVideoId(response.data.video._id);
         setIsProcessing(true);
       }
       
-      clearInterval(progressInterval);
+      // Ensure progress shows 100% on completion
       setUploadProgress(100);
       
       // Reset form
@@ -128,14 +125,18 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         fileInputRef.current.value = '';
       }
       
-      onUploadSuccess();
-      onClose();
+      // Small delay to show 100% completion before closing
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+        onUploadSuccess();
+        onClose();
+      }, 500);
       
     } catch (error: any) {
-      setError(error.message || 'Upload failed. Please try again.');
-    } finally {
       setUploading(false);
       setUploadProgress(0);
+      setError(error.message || 'Upload failed. Please try again.');
     }
   };
 
@@ -158,6 +159,11 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  // Admin-only check - only allow admin users to access upload modal
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -232,19 +238,22 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
             </div>
           </div>
 
-          {/* Upload Progress */}
+          {/* Upload Progress - Always visible when uploading */}
           {uploading && (
-            <div>
+            <div className="mb-4">
               <div className="flex justify-between text-sm text-gray-300 mb-2">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
+                <span className="font-medium">Uploading video...</span>
+                <span className="font-semibold">{Math.round(uploadProgress)}%</span>
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
+              <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-netflix-red h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
+                  className="bg-netflix-red h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }}
                 ></div>
               </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Please wait while your video is being uploaded. Do not close this window.
+              </p>
             </div>
           )}
 

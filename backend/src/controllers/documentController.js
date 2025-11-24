@@ -1,7 +1,9 @@
 const Document = require('../models/Document');
 const DocumentProcessor = require('../services/documentProcessor');
+const { calculateFileHash } = require('../services/hashService');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 const documentProcessor = new DocumentProcessor();
 
@@ -15,6 +17,16 @@ const uploadDocument = async (req, res) => {
     const { title, description, category = 'other', tags = [] } = req.body;
     const userId = req.user.id;
 
+    // Calculate SHA-256 hash of the uploaded file
+    let sha256Hash = null;
+    try {
+      sha256Hash = await calculateFileHash(req.file.path);
+      console.log(`Calculated SHA-256 hash for document: ${sha256Hash.substring(0, 16)}...`);
+    } catch (hashError) {
+      console.error('Error calculating file hash:', hashError);
+      // Don't fail upload if hash calculation fails, but log the error
+    }
+
     // Create document record
     const document = new Document({
       title,
@@ -27,7 +39,8 @@ const uploadDocument = async (req, res) => {
         mimetype: req.file.mimetype
       },
       category,
-      tags: Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim())
+      tags: Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim()),
+      sha256Hash: sha256Hash
     });
 
     await document.save();
@@ -279,6 +292,128 @@ const updateDocument = async (req, res) => {
   }
 };
 
+// Get document hash for manual verification
+const getDocumentHash = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    if (!document.sha256Hash) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hash not available for this document. It may have been uploaded before hash calculation was implemented.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        documentId: document._id,
+        title: document.title,
+        sha256Hash: document.sha256Hash,
+        uploadedAt: document.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting document hash:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get document hash',
+      error: error.message
+    });
+  }
+};
+
+// Verify document integrity
+const verifyDocumentIntegrity = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    if (!document.sha256Hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hash not available for this document. It may have been uploaded before hash calculation was implemented.',
+        data: {
+          documentId: document._id,
+          title: document.title,
+          canVerify: false
+        }
+      });
+    }
+
+    // Check if file was uploaded or hash string was provided
+    let providedHash = null;
+    
+    if (req.file) {
+      // File was uploaded, calculate its hash
+      try {
+        providedHash = await calculateFileHash(req.file.path);
+        // Clean up temporary file
+        await fs.unlink(req.file.path).catch(() => {
+          // Ignore cleanup errors
+        });
+      } catch (hashError) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to calculate hash of uploaded file',
+          error: hashError.message
+        });
+      }
+    } else if (req.body.hash) {
+      // Hash string was provided directly
+      providedHash = req.body.hash.toLowerCase().trim();
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either a document file or a hash string',
+        data: {
+          documentId: document._id,
+          title: document.title
+        }
+      });
+    }
+
+    // Compare hashes
+    const storedHash = document.sha256Hash.toLowerCase().trim();
+    const matches = providedHash === storedHash;
+
+    res.json({
+      success: true,
+      data: {
+        documentId: document._id,
+        title: document.title,
+        verified: matches,
+        providedHash: providedHash,
+        storedHash: storedHash,
+        message: matches 
+          ? 'Document integrity verified. The file matches the original.' 
+          : 'Document integrity check failed. The file does not match the original and may have been tampered with.',
+        verifiedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying document integrity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify document integrity',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadDocument,
   getDocuments,
@@ -287,6 +422,8 @@ module.exports = {
   getDocumentThumbnail,
   getAdminDocuments,
   deleteDocument,
-  updateDocument
+  updateDocument,
+  getDocumentHash,
+  verifyDocumentIntegrity
 };
 

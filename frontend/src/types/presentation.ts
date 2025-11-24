@@ -24,6 +24,7 @@ export interface Presentation {
   tags: string[];
   isPublic: boolean;
   thumbnail: string;
+  sha256Hash?: string;
   createdAt: string;
   updatedAt: string;
 }

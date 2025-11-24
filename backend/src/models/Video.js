@@ -77,6 +77,13 @@ const videoSchema = new mongoose.Schema({
   isFeatured: {
     type: Boolean,
     default: false
+  },
+  sha256Hash: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true,
+    index: true
   }
 }, {
   timestamps: true

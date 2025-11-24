@@ -32,17 +32,73 @@ class VideoService {
     }
   }
 
-  async uploadVideo(videoFile: File, uploadData: VideoUploadData): Promise<VideoResponse> {
-    const formData = new FormData();
-    formData.append('video', videoFile);
-    formData.append('title', uploadData.title);
-    formData.append('description', uploadData.description);
-    formData.append('category', uploadData.category);
-    formData.append('tags', uploadData.tags);
+  async uploadVideo(
+    videoFile: File, 
+    uploadData: VideoUploadData,
+    onProgress?: (progress: number) => void
+  ): Promise<VideoResponse> {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('video', videoFile);
+      formData.append('title', uploadData.title);
+      formData.append('description', uploadData.description);
+      formData.append('category', uploadData.category);
+      formData.append('tags', uploadData.tags);
 
-    return this.request<VideoResponse>('/videos/upload', {
-      method: 'POST',
-      body: formData,
+      const xhr = new XMLHttpRequest();
+      const url = `${API_BASE_URL}/videos/upload`;
+      const token = localStorage.getItem('token');
+
+      // Track upload progress
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(Math.min(100, Math.max(0, percentComplete)));
+        }
+      };
+
+      // Handle completion
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (onProgress) {
+              onProgress(100);
+            }
+            resolve(data);
+          } catch (error) {
+            reject(new Error('Failed to parse response'));
+          }
+        } else {
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            reject(new Error(errorData.message || `Upload failed with status ${xhr.status}`));
+          } catch (error) {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        }
+      };
+
+      // Handle errors
+      xhr.onerror = () => {
+        reject(new Error('Network error during upload'));
+      };
+
+      // Handle abort
+      xhr.onabort = () => {
+        reject(new Error('Upload was cancelled'));
+      };
+
+      // Open and send request
+      xhr.open('POST', url);
+      
+      // Set authorization header if token exists
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      // Send request
+      xhr.send(formData);
     });
   }
 
@@ -169,6 +225,99 @@ class VideoService {
     } catch (error) {
       // Silently handle errors - don't interrupt video playback
       console.warn('Failed to track video view:', error);
+    }
+  }
+
+  /**
+   * Get video hash for manual verification
+   * @param videoId - Video ID
+   * @returns Video hash information
+   */
+  async getVideoHash(videoId: string): Promise<{
+    success: boolean;
+    data: {
+      videoId: string;
+      title: string;
+      sha256Hash: string;
+      uploadedAt: string;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        videoId: string;
+        title: string;
+        sha256Hash: string;
+        uploadedAt: string;
+      };
+    }>(`/videos/${videoId}/hash`);
+  }
+
+  /**
+   * Verify video integrity by uploading a file or providing a hash
+   * @param videoId - Video ID
+   * @param file - Optional video file to verify
+   * @param hash - Optional hash string to verify
+   * @returns Verification result
+   */
+  async verifyVideoIntegrity(
+    videoId: string,
+    file?: File,
+    hash?: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      videoId: string;
+      title: string;
+      verified: boolean;
+      providedHash: string;
+      storedHash: string;
+      message: string;
+      verifiedAt: string;
+    };
+  }> {
+    if (file) {
+      // Upload file for verification
+      const formData = new FormData();
+      formData.append('video', file);
+
+      return this.request<{
+        success: boolean;
+        data: {
+          videoId: string;
+          title: string;
+          verified: boolean;
+          providedHash: string;
+          storedHash: string;
+          message: string;
+          verifiedAt: string;
+        };
+      }>(`/videos/${videoId}/verify`, {
+        method: 'POST',
+        body: formData,
+      });
+    } else if (hash) {
+      // Send hash string for verification
+      return this.request<{
+        success: boolean;
+        data: {
+          videoId: string;
+          title: string;
+          verified: boolean;
+          providedHash: string;
+          storedHash: string;
+          message: string;
+          verifiedAt: string;
+        };
+      }>(`/videos/${videoId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hash }),
+      });
+    } else {
+      throw new Error('Either file or hash must be provided');
     }
   }
 }

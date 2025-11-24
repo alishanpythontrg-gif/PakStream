@@ -8,16 +8,21 @@ const {
   getDocumentThumbnail,
   getAdminDocuments,
   deleteDocument,
-  updateDocument
+  updateDocument,
+  getDocumentHash,
+  verifyDocumentIntegrity
 } = require('../controllers/documentController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const upload = require('../middleware/documentUpload');
+const { verificationUpload } = require('../middleware/documentUpload');
 
 // Public routes
 router.get('/', getDocuments);
 router.get('/:id', getDocumentById);
 router.get('/:id/file', getDocumentFile);
 router.get('/:id/thumbnail', getDocumentThumbnail);
+router.get('/:id/hash', getDocumentHash); // Get document hash for manual verification
+router.post('/:id/verify', verificationUpload, verifyDocumentIntegrity); // Verify document integrity (public endpoint)
 
 // Admin routes
 router.post('/upload', authenticateToken, requireAdmin, upload.single('document'), uploadDocument);

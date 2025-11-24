@@ -64,6 +64,13 @@ const presentationSchema = new mongoose.Schema({
     default: true
   },
   thumbnail: String,
+  sha256Hash: {
+    type: String,
+    required: false,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
